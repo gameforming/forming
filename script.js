@@ -1,5 +1,3 @@
-// Clock RNG Game JavaScript versie
-
 const clocks = [
     ["basic Clock", 60, 1],
     ["wooden Clock", 20, 2],
@@ -105,6 +103,13 @@ const nextTurn = () => {
     updateUI();
 };
 
+// Add delay before executing next turn
+const nextTurnWithDelay = () => {
+    setTimeout(() => {
+        nextTurn();
+    }, 2000); // Delay of 2 seconds
+};
+
 // Buttons
 const createButton = (label, callback) => {
     const btn = document.createElement("button");
@@ -122,10 +127,11 @@ createButton("🎲 Roll x100000", () => rollAction(100000));
 createButton("🎲 Roll x1000000", () => rollAction(1000000));
 createButton("🎲 Roll x10000000", () => rollAction(10000000));
 document.body.appendChild(document.createElement("br"));
-createButton("➡️ Next Turn", nextTurn);
+createButton("➡️ Next Turn", nextTurnWithDelay); // Using delayed nextTurn
 
 // Start
 updateUI();
+
 
 
 
