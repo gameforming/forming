@@ -10,7 +10,9 @@ const clocks = [
     ["matrix clock", 0.09, 2500],
     ["ultimate clock", 0.009, 10000],
     ["tick tack clock", 0.001, 50000],
-    ["fantom clock", 0.000001, 5000000000]
+    ["fantom clock", 0.000001, 5000000000],
+    ["time lord", 0.000000001, 5000000000000000],
+    ["time god", 0.000000000001, 50000000000000000000000]
 ];
 
 let inventory = {};
