@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - Gameforming</title>
+  <style>
+    body {
+      background-color: #1e1e2f;
+      color: white;
+      text-align: center;
+      font-family: Arial, sans-serif;
+      padding-top: 100px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 18px;
+      border-radius: 5px;
+      border: none;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Enter your name to start</h1>
+  <input type="text" id="nameInput" placeholder="Your name" />
+  <br />
+  <button onclick="saveName()">Enter</button>
+
+  <script>
+    function saveName() {
+      const name = document.getElementById('nameInput').value.trim();
+      if (name) {
+        localStorage.setItem('username', name);
+        window.location.href = 'index.html';
+      }
+    }
+  </script>
+</body>
+</html>
