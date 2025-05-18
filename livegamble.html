@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Gamble Game</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1e1e2f;
+      color: white;
+      text-align: center;
+      padding: 40px;
+      min-height: 100vh;
+    }
+    button {
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #jobs button {
+      width: 140px;
+    }
+    #extra {
+      margin-top: 20px;
+    }
+    input[type=number] {
+      padding: 5px;
+      width: 150px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+      margin-bottom: 10px;
+    }
+    #output {
+      margin-top: 20px;
+      min-height: 40px;
+      font-size: 18px;
+    }
+    #money, #multiplier {
+      font-size: 20px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Live Gamble Game</h1>
+  
+  <div id="money">You have €0</div>
+  <div id="multiplier">Multiplier: x1.00</div>
+  
+  <div id="jobs">
+    <button data-job="Pizza delivery">Pizza Delivery</button>
+    <button data-job="TikToker">TikToker</button>
+    <button data-job="YouTuber">YouTuber</button>
+    <button data-job="Indian Hacker">Indian Hacker</button>
+  </div>
+  
+  <button id="workBtn">Do Work</button>
+  <button id="gambleBtn">Gamble</button>
+  <button id="resetBtn">Reset Game</button>
+  
+  <div id="extra"></div>
+  <div id="output"></div>
+</body>
+</html>
