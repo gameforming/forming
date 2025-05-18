@@ -9,66 +9,232 @@
       background-color: #1e1e2f;
       color: white;
       text-align: center;
-      padding: 40px;
-      min-height: 100vh;
+      padding: 50px;
     }
     button {
       background-color: #4caf50;
       color: white;
       border: none;
-      padding: 10px 20px;
-      font-size: 16px;
-      border-radius: 6px;
+      padding: 15px 30px;
+      font-size: 20px;
+      border-radius: 8px;
       cursor: pointer;
-      margin: 5px;
+      margin-top: 20px;
       transition: background-color 0.3s;
     }
     button:hover {
       background-color: #45a049;
     }
-    #jobs button {
-      width: 140px;
+    #back-button {
+      margin-bottom: 40px;
+      background-color: #555;
     }
-    #extra {
-      margin-top: 20px;
-    }
-    input[type=number] {
-      padding: 5px;
-      width: 150px;
-      font-size: 16px;
-      border-radius: 5px;
-      border: none;
-      margin-bottom: 10px;
-    }
-    #output {
-      margin-top: 20px;
-      min-height: 40px;
-      font-size: 18px;
-    }
-    #money, #multiplier {
-      font-size: 20px;
-      margin: 15px 0;
+    #back-button:hover {
+      background-color: #444;
     }
   </style>
 </head>
 <body>
+  <button id="back-button" onclick="window.location.href='index.html'">Back to Home</button>
+
   <h1>Live Gamble Game</h1>
-  
-  <div id="money">You have €0</div>
+
+  <div id="money">Money: €0</div>
   <div id="multiplier">Multiplier: x1.00</div>
-  
-  <div id="jobs">
-    <button data-job="Pizza delivery">Pizza Delivery</button>
-    <button data-job="TikToker">TikToker</button>
-    <button data-job="YouTuber">YouTuber</button>
-    <button data-job="Indian Hacker">Indian Hacker</button>
-  </div>
-  
-  <button id="workBtn">Do Work</button>
-  <button id="gambleBtn">Gamble</button>
-  <button id="resetBtn">Reset Game</button>
-  
-  <div id="extra"></div>
+  <div id="job">Current Job: None</div>
+  <div id="progress"></div>
   <div id="output"></div>
+
+  <div id="main-buttons">
+    <button id="work-btn">Do Work</button>
+    <button id="gamble-btn">Gamble</button>
+    <button id="reset-btn">Reset Game</button>
+  </div>
+
+  <div id="job-selection"></div>
+  <div id="extra"></div>
+
+  <script>
+    let money = 0;
+    let multiplier = 0.0;
+    let job = null;
+    let progress = 0;
+
+    const jobs = ["Pizza Delivery", "TikTok Creator", "YouTuber", "Indian Hacker"];
+
+    const moneyDiv = document.getElementById("money");
+    const multiplierDiv = document.getElementById("multiplier");
+    const jobDiv = document.getElementById("job");
+    const progressDiv = document.getElementById("progress");
+    const outputDiv = document.getElementById("output");
+    const jobSelectionDiv = document.getElementById("job-selection");
+    const extraDiv = document.getElementById("extra");
+
+    function updateDisplay() {
+      moneyDiv.textContent = `Money: €${Math.floor(money)}`;
+      multiplierDiv.textContent = `Multiplier: x${(1 + multiplier).toFixed(2)}`;
+      jobDiv.textContent = `Current Job: ${job || "None"}`;
+    }
+
+    function clearExtra() {
+      extraDiv.innerHTML = "";
+    }
+
+    function selectJob(selectedJob) {
+      job = selectedJob;
+      progress = 0;
+      outputDiv.textContent = `You are now working as ${job}`;
+      updateDisplay();
+      clearExtra();
+    }
+
+    function createJobButtons() {
+      jobSelectionDiv.innerHTML = "";
+      jobs.forEach(j => {
+        const btn = document.createElement("button");
+        btn.textContent = j;
+        btn.onclick = () => selectJob(j);
+        jobSelectionDiv.appendChild(btn);
+      });
+    }
+
+    function doWork() {
+      if (!job) {
+        outputDiv.textContent = "Please select a job first!";
+        return;
+      }
+
+      let earnings = 0;
+
+      switch (job) {
+        case "Pizza Delivery":
+          progress++;
+          outputDiv.textContent = `Delivering pizzas... (${progress}/5)`;
+          if (progress >= 5) {
+            earnings = 500;
+            progress = 0;
+          }
+          break;
+        case "TikTok Creator":
+          progress++;
+          outputDiv.textContent = `You got 1 like! (${progress}/10)`;
+          if (progress >= 10) {
+            earnings = 500;
+            progress = 0;
+          }
+          break;
+        case "YouTuber":
+          progress++;
+          outputDiv.textContent = `You got 1 like! (${progress}/100)`;
+          if (progress >= 100) {
+            earnings = 5000;
+            progress = 0;
+          }
+          break;
+        case "Indian Hacker":
+          progress++;
+          outputDiv.textContent = `You performed a hack! (${progress})`;
+          earnings = 50;
+          break;
+      }
+
+      if (earnings > 0) {
+        const total = earnings * (1 + multiplier);
+        money += total;
+        outputDiv.textContent = `You earned €${Math.floor(total)}`;
+      }
+
+      updateDisplay();
+    }
+
+    function gambleMenu() {
+      clearExtra();
+
+      const label = document.createElement("label");
+      label.textContent = "Enter amount to gamble (€10 min):";
+      extraDiv.appendChild(label);
+
+      const betInput = document.createElement("input");
+      betInput.type = "number";
+      betInput.min = 10;
+      extraDiv.appendChild(betInput);
+
+      const gambleMoneyBtn = document.createElement("button");
+      gambleMoneyBtn.textContent = "Gamble for Money";
+      gambleMoneyBtn.onclick = () => gambleMoney(betInput.value);
+      extraDiv.appendChild(gambleMoneyBtn);
+
+      const gambleMultiplierBtn = document.createElement("button");
+      gambleMultiplierBtn.textContent = "Gamble for Multiplier (€1000)";
+      gambleMultiplierBtn.onclick = gambleMultiplier;
+      extraDiv.appendChild(gambleMultiplierBtn);
+    }
+
+    function gambleMoney(bet) {
+      bet = Number(bet);
+      if (isNaN(bet)) {
+        outputDiv.textContent = "Please enter a valid number.";
+        return;
+      }
+      if (bet < 10) {
+        outputDiv.textContent = "Minimum bet is €10.";
+        return;
+      }
+      if (money < bet) {
+        outputDiv.textContent = "Not enough money to gamble.";
+        return;
+      }
+
+      money -= bet;
+      if (Math.random() < 0.4) { // 40% chance
+        const winnings = bet * 2;
+        money += winnings;
+        outputDiv.textContent = `You won €${winnings}!`;
+      } else {
+        outputDiv.textContent = "You won nothing.";
+      }
+      updateDisplay();
+    }
+
+    function gambleMultiplier() {
+      if (money < 1000) {
+        outputDiv.textContent = "Not enough money to gamble for multiplier.";
+        return;
+      }
+
+      money -= 1000;
+      const roll = Math.floor(Math.random() * 100) + 1;
+      if (roll <= 60) {
+        outputDiv.textContent = "You got no multiplier.";
+      } else if (roll <= 95) {
+        multiplier += 0.01;
+        outputDiv.textContent = "You got +0.01 multiplier!";
+      } else if (roll <= 99) {
+        multiplier += 0.05;
+        outputDiv.textContent = "You got +0.05 multiplier!";
+      } else {
+        multiplier += 0.10;
+        outputDiv.textContent = "You got +0.10 multiplier!";
+      }
+      updateDisplay();
+    }
+
+    function resetGame() {
+      money = 0;
+      multiplier = 0.0;
+      job = null;
+      progress = 0;
+      outputDiv.textContent = "Game restarted!";
+      updateDisplay();
+      clearExtra();
+    }
+
+    document.getElementById("work-btn").addEventListener("click", doWork);
+    document.getElementById("gamble-btn").addEventListener("click", gambleMenu);
+    document.getElementById("reset-btn").addEventListener("click", resetGame);
+
+    createJobButtons();
+    updateDisplay();
+  </script>
 </body>
 </html>
