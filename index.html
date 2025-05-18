@@ -2,16 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>gameforming</title>
+  <title>Gameforming</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #1e1e2f;
+      background-image: url('achtergrondgameforming.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
       color: white;
       text-align: center;
       padding: 50px;
+      min-height: 100vh;
+      margin: 0;
+    }
+    /* Optionele overlay zodat tekst goed leesbaar blijft */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5); /* zwart met 50% transparantie */
+      z-index: -1;
+    }
+    h1 {
+      margin-bottom: 50px;
+      font-size: 3rem;
     }
     button {
+      display: block;
+      width: 250px;
+      margin: 20px auto;
       background-color: #4caf50;
       color: white;
       border: none;
@@ -19,7 +39,6 @@
       font-size: 20px;
       border-radius: 8px;
       cursor: pointer;
-      margin-top: 40px;
       transition: background-color 0.3s;
     }
     button:hover {
@@ -28,7 +47,10 @@
   </style>
 </head>
 <body>
-  <h1>welcome to gameforming</h1>
-  <button onclick="window.location.href='clockrng.html'">clockrng</button>
+  <h1>Welcome to Gameforming</h1>
+
+  <button onclick="window.location.href='clockrng.html'">Play ClockRNG</button>
+  <button onclick="window.location.href='livegamble.html'">Play Live Gamble</button>
+
 </body>
 </html>
