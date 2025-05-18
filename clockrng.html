@@ -1,23 +1,37 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ClockRNG Game</title>
-    <link rel="stylesheet" href="clockrng.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ClockRNG Game</title>
+  <!-- CSS tijdelijk uitgezet voor test -->
+  <!-- <link rel="stylesheet" href="clockrng.css" /> -->
+  <style>
+    /* Simpele styling om knop zichtbaar en mooi te maken */
+    button {
+      font-size: 16px;
+      padding: 10px 15px;
+      margin: 10px 0;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
 </head>
 <body>
-    <h1>Welkom bij ClockRNG</h1>
+  <button onclick="window.location.href='index.html'">Terug naar hoofdpagina</button>
 
-    <button onclick="window.location.href='index.html'">Terug naar hoofdpagina</button>
+  <h1>Welkom bij ClockRNG</h1>
 
-    <!-- Hier komt je game canvas of content -->
-    <div id="game-container">
-        <!-- Je game wordt hier geladen via JavaScript -->
-    </div>
+  <div id="game-container">
+    <!-- Je game wordt hier geladen via JavaScript -->
+  </div>
 
-    <script src="clockrng.js"></script>
+  <script src="clockrng.js"></script>
 </body>
 </html>
-
-
