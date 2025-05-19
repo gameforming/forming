@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Clock Clicker</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background-color: #121212;
+      color: white;
+      text-align: center;
+      padding: 40px;
+    }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 10px;
+    }
+    #ticks {
+      font-size: 2rem;
+      margin-bottom: 30px;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 10px;
+      transition: background 0.3s;
+    }
+    #click-button {
+      background-color: #4caf50;
+      color: white;
+    }
+    #click-button:hover {
+      background-color: #45a049;
+    }
+    .upgrade {
+      background-color: #2196f3;
+      color: white;
+    }
+    .upgrade:hover {
+      background-color: #1976d2;
+    }
+    #back {
+      background-color: #555;
+      color: white;
+      position: absolute;
+      left: 20px;
+      top: 20px;
+    }
+    #back:hover {
+      background-color: #777;
+    }
+  </style>
+</head>
+<body>
+  <button id="back" onclick="window.location.href='index.html'">← Back</button>
+  <h1>Clock Clicker</h1>
+  <div id="ticks">Ticks: 0</div>
+  <button id="click-button">🕒 Click the Clock!</button>
+
+  <div>
+    <button class="upgrade" id="click-upgrade">Upgrade Click (Cost: 50)</button>
+    <button class="upgrade" id="auto-upgrade">Upgrade Auto-Ticks (Cost: 100)</button>
+  </div>
+
+  <script>
+    let ticks = 0;
+    let ticksPerClick = 1;
+    let autoTicks = 0;
+    let clickUpgradeCost = 50;
+    let autoUpgradeCost = 100;
+
+    const ticksDisplay = document.getElementById("ticks");
+    const clickButton = document.getElementById("click-button");
+    const clickUpgrade = document.getElementById("click-upgrade");
+    const autoUpgrade = document.getElementById("auto-upgrade");
+
+    function updateDisplay() {
+      ticksDisplay.textContent = `Ticks: ${Math.floor(ticks)}`;
+      clickUpgrade.textContent = `Upgrade Click (Cost: ${clickUpgradeCost})`;
+      autoUpgrade.textContent = `Upgrade Auto-Ticks (Cost: ${autoUpgradeCost})`;
+    }
+
+    clickButton.onclick = () => {
+      ticks += ticksPerClick;
+      updateDisplay();
+    };
+
+    clickUpgrade.onclick = () => {
+      if (ticks >= clickUpgradeCost) {
+        ticks -= clickUpgradeCost;
+        ticksPerClick *= 2;
+        clickUpgradeCost = Math.floor(clickUpgradeCost * 2.5);
+        updateDisplay();
+      }
+    };
+
+    autoUpgrade.onclick = () => {
+      if (ticks >= autoUpgradeCost) {
+        ticks -= autoUpgradeCost;
+        autoTicks += 1;
+        autoUpgradeCost = Math.floor(autoUpgradeCost * 2);
+        updateDisplay();
+      }
+    };
+
+    setInterval(() => {
+      ticks += autoTicks;
+      updateDisplay();
+    }, 1000);
+
+    updateDisplay();
+  </script>
+</body>
+</html>
