@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>I Don't Know - Word Game</title>
+  <style>
+    body {
+      background-color: #222;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 30px;
+    }
+    input {
+      padding: 10px;
+      font-size: 18px;
+      width: 100px;
+      text-align: center;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+    .guess {
+      margin: 10px;
+    }
+    .letter {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      line-height: 40px;
+      font-size: 24px;
+      margin: 2px;
+      border-radius: 5px;
+    }
+    .correct {
+      background-color: #4CAF50;
+    }
+    .present {
+      background-color: #FFC107;
+    }
+    .absent {
+      background-color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>I Don't Know</h1>
+  <p>Guess the 5-letter word!</p>
+
+  <input type="text" id="guessInput" maxlength="5" />
+  <button onclick="submitGuess()">Guess</button>
+  <div id="guessContainer"></div>
+  <p id="result"></p>
+  <button onclick="location.href='index.html'">← Back to Homepage</button>
+
+  <script>
+    const words = ["APPLE", "BRAIN", "GAMES", "WORDS", "HONEY", "CLOCK"];
+    const answer = words[Math.floor(Math.random() * words.length)];
+    let attempts = 0;
+    const maxAttempts = 6;
+
+    function submitGuess() {
+      const input = document.getElementById("guessInput");
+      const guess = input.value.toUpperCase();
+      if (guess.length !== 5) {
+        alert("Please enter a 5-letter word.");
+        return;
+      }
+
+      attempts++;
+      const container = document.getElementById("guessContainer");
+      const row = document.createElement("div");
+      row.className = "guess";
+
+      for (let i = 0; i < 5; i++) {
+        const span = document.createElement("span");
+        span.className = "letter";
+        span.textContent = guess[i];
+
+        if (guess[i] === answer[i]) {
+          span.classList.add("correct");
+        } else if (answer.includes(guess[i])) {
+          span.classList.add("present");
+        } else {
+          span.classList.add("absent");
+        }
+
+        row.appendChild(span);
+      }
+
+      container.appendChild(row);
+      input.value = "";
+
+      if (guess === answer) {
+        document.getElementById("result").textContent = "🎉 You guessed it!";
+        document.getElementById("guessInput").disabled = true;
+      } else if (attempts >= maxAttempts) {
+        document.getElementById("result").textContent = "❌ Game over! The word was: " + answer;
+        document.getElementById("guessInput").disabled = true;
+      }
+    }
+  </script>
+</body>
+</html>
