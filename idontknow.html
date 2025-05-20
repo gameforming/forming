@@ -57,7 +57,24 @@
   <button onclick="location.href='index.html'">← Back to Homepage</button>
 
   <script>
-    const words = ["APPLE", "BRAIN", "GAMES", "WORDS", "HONEY", "CLOCK"];
+    const words = [
+  "APPLE", "BRAIN", "GAMES", "WORDS", "HONEY", "CLOCK",
+  "PLANE", "STORM", "NIGHT", "WATER", "MOUSE", "TRUCK",
+  "FIRES", "TREES", "ROADS", "SKIES", "TABLE", "CHAIR",
+  "BRICK", "SUGAR", "LIGHT", "SMILE", "SHINE", "CLOUD",
+  "DRIVE", "CRANE", "STONE", "SNAKE", "BRUSH", "CLEAN",
+  "SHEEP", "HORSE", "TIGER", "ZEBRA", "LEMON", "GRAPE",
+  "BERRY", "MANGO", "PEACH", "JUICE", "BREAD", "CHEES",
+  "SPOON", "KNIFE", "PLATE", "FORKS", "GLASS", "MIRROR",
+  "SHIRT", "PANTS", "DRESS", "SHOES", "SOUND", "MUSIC",
+  "VOICE", "NOISE", "QUIET", "LAUGH", "SMELL", "TASTE",
+  "HAPPY", "SADLY", "ANGRY", "LOVEL", "TRUST", "HEART",
+  "BLOOD", "LIVER", "LUNGS", "BONES", "SKULL", "SLEEP",
+  "DREAM", "WORRY", "THINK", "GUESS", "LEARN", "TEACH",
+  "WRITE", "READS", "STUDY", "COUNT", "LOGIC", "QUIZZ",
+  "LEVEL", "POINT", "SCORE", "CODES", "INPUT", "CLICK"
+];
+
     const answer = words[Math.floor(Math.random() * words.length)];
     let attempts = 0;
     const maxAttempts = 6;
