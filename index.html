@@ -2,47 +2,46 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Gameforming</title>
+  <title>GameForming - Home</title>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #1e1e2f;
-      color: white;
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
       text-align: center;
-      padding: 50px;
+      padding: 40px;
     }
-    button {
-      background-color: #4caf50;
-      color: white;
-      border: none;
+
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 20px;
+    }
+
+    .game-button {
+      display: block;
+      margin: 20px auto;
       padding: 15px 30px;
-      font-size: 20px;
-      border-radius: 8px;
+      font-size: 1.2rem;
+      background-color: #444;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
       cursor: pointer;
-      margin: 20px;
-      transition: background-color 0.3s;
+      width: 250px;
+      transition: background 0.3s;
     }
-    button:hover {
-      background-color: #45a049;
+
+    .game-button:hover {
+      background-color: #666;
     }
   </style>
 </head>
 <body>
-  <h1>this site is made by Sem </h1>
+  <h1>Welcome to GameForming</h1>
 
-  <!-- Knoppen voor games -->
-  <button onclick="window.location.href='clockrng.html'">ClockRNG</button>
-  <button onclick="window.location.href='livegamble.html'">Live Gamble</button>
+  <button class="game-button" onclick="location.href='gamblelive.html'">💰 Gamble Live</button>
+  <button class="game-button" onclick="location.href='clockrng.html'">⏱️ Clock RNG</button>
+  <button class="game-button" onclick="location.href='clockclicker.html'">🕰️ Clock Clicker</button>
 
-  <script>
-    const username = localStorage.getItem('username');
-    if (username) {
-      const welcome = document.createElement('h2');
-      welcome.textContent = `Hello ${username}, welcome to gameforming!`;
-      document.body.insertBefore(welcome, document.body.children[1]);
-    } else {
-      window.location.href = 'login.html';
-    }
-  </script>
 </body>
 </html>
