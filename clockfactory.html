@@ -10,9 +10,8 @@
       font-family: sans-serif;
       background-color: #121212;
       color: white;
-      /* Zorg dat de drie containers naast elkaar staan */
-      flex-direction: row;
       height: 100vh;
+      overflow: hidden;
     }
 
     #game {
@@ -50,6 +49,8 @@
     .arrow {
       transform: rotate(0deg);
       transition: transform 0.2s;
+      font-weight: bold;
+      font-size: 20px;
       user-select: none;
     }
 
@@ -64,15 +65,18 @@
 
     .block {
       background-color: orange;
+      font-weight: bold;
+      user-select: none;
     }
 
     #sidebar {
-      width: 250px;
+      width: 300px;
       padding: 20px;
       background-color: #1e1e2f;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 15px;
+      box-sizing: border-box;
       user-select: none;
     }
 
@@ -83,8 +87,9 @@
       color: white;
       border-radius: 5px;
       cursor: pointer;
-      font-size: 16px;
-      transition: background-color 0.3s;
+      font-weight: bold;
+      font-size: 14px;
+      user-select: none;
     }
 
     button:hover {
@@ -96,37 +101,43 @@
       box-sizing: border-box;
     }
 
-    #backButtonContainer {
-      width: 180px;
-      padding: 20px;
-      background-color: #1e1e2f;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
+    h2 {
+      margin-top: 0;
+      margin-bottom: 10px;
     }
 
-    #backButtonContainer button {
-      width: 100%;
-      font-size: 18px;
-      padding: 15px 0;
-      border-radius: 8px;
+    a.button-link {
+      text-decoration: none;
+      display: inline-block;
+      padding: 10px;
+      background-color: #2196f3;
+      border-radius: 5px;
+      color: white;
+      text-align: center;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
     }
 
+    a.button-link:hover {
+      background-color: #1976d2;
+    }
   </style>
 </head>
 <body>
   <div id="game"></div>
-
   <div id="sidebar">
     <h2>Shop</h2>
     <button onclick="buyBlock('+2')">+2 Block (€<span id="costPlus2">100</span>)</button>
     <button onclick="buyBlock('x2')">x2 Block (€<span id="costX2">200</span>)</button>
     <button onclick="buyBlock('bocht')">Bocht (€500)</button>
-    <p>Money: <span id="money">0</span></p>
-  </div>
 
-  <div id="backButtonContainer">
-    <button onclick="window.location.href='index.html'">Back to Homepage</button>
+    <p>Money: €<span id="money">0</span></p>
+
+    <button onclick="saveGame()">Opslaan</button>
+    <button onclick="loadGame()">Laden</button>
+
+    <a href="index.html" class="button-link" style="margin-top: 20px;">Back to Homepage</a>
   </div>
 
   <script>
@@ -184,9 +195,15 @@
 
           cell.addEventListener("click", () => {
             if (selected) {
-              selected.x = x;
-              selected.y = y;
-              selected = null;
+              // Verplaats het geselecteerde object
+              // Zorg dat de plek vrij is (behalve de plek waar het stond)
+              if (!isOccupied(x, y) || isSamePosition(selected, x, y)) {
+                selected.x = x;
+                selected.y = y;
+                selected = null;
+              } else {
+                alert("Deze plek is al bezet!");
+              }
             } else {
               if (x === factory.x && y === factory.y) selected = factory;
               else if (x === sell.x && y === sell.y) selected = sell;
@@ -202,6 +219,15 @@
           game.appendChild(cell);
         }
       }
+    }
+
+    function isOccupied(x, y) {
+      if ((factory.x === x && factory.y === y) || (sell.x === x && sell.y === y)) return true;
+      return blocks.some(b => b.x === x && b.y === y);
+    }
+
+    function isSamePosition(obj, x, y) {
+      return obj.x === x && obj.y === y;
     }
 
     document.addEventListener("keydown", (e) => {
@@ -228,6 +254,7 @@
         const block = blocks.find(b => b.x === clock.x && b.y === clock.y);
         if (block && block.type === "bocht") {
           const [dx, dy] = [clock.dx, clock.dy];
+          // Draai de richting 90 graden rechtsom
           if (dx === 1 && dy === 0) [clock.dx, clock.dy] = [0, 1];
           else if (dx === 0 && dy === 1) [clock.dx, clock.dy] = [-1, 0];
           else if (dx === -1 && dy === 0) [clock.dx, clock.dy] = [0, -1];
@@ -255,95 +282,127 @@
       }
     }
 
-    function renderClocks() {
-      document.querySelectorAll(".clock").forEach(elem => elem.remove());
+    function drawClocks() {
+      // Verwijder eerst alle clock elementen
+      document.querySelectorAll(".clock").forEach(c => c.remove());
+
       clocks.forEach(clock => {
-        if (clock.x >= 0 && clock.x < size && clock.y >= 0 && clock.y < size) {
-          const clockElem = document.createElement("div");
-          clockElem.classList.add("clock");
-          clockElem.style.left = `${clock.x * 41 + 10}px`;
-          clockElem.style.top = `${clock.y * 41 + 10}px`;
-          game.appendChild(clockElem);
-        }
+        const cell = grid[clock.y][clock.x];
+        if (!cell) return;
+        const clockEl = document.createElement("div");
+        clockEl.classList.add("clock");
+        clockEl.textContent = "🕒";
+        // Plaats in de cel, centeren met absolute posities
+        const rect = cell.getBoundingClientRect();
+        const gameRect = game.getBoundingClientRect();
+        clockEl.style.left = (cell.offsetLeft + 10) + "px";
+        clockEl.style.top = (cell.offsetTop + 10) + "px";
+        game.appendChild(clockEl);
       });
     }
 
-    function buyBlock(type) {
-      let cost = 0;
-      if (type === "+2") cost = costPlus2;
-      else if (type === "x2") cost = costX2;
-      else if (type === "bocht") cost = 500;
-
-      if (money >= cost) {
-        money -= cost;
-        document.getElementById("money").textContent = money;
-
-        // Plaats block op eerste vrije plek
-        for (let y = 0; y < size; y++) {
-          for (let x = 0; x < size; x++) {
-            if ((x === factory.x && y === factory.y) || (x === sell.x && y === sell.y)) continue;
-            if (!blocks.find(b => b.x === x && b.y === y)) {
-              blocks.push({ x, y, type, rotation: 0 });
-              createGrid();
-              return;
-            }
-          }
-        }
-      } else {
-        alert("Niet genoeg geld!");
-      }
+    function gameLoop() {
+      spawnClock();
+      updateClocks();
+      drawClocks();
     }
 
-    // Opslaan en laden
+    setInterval(gameLoop, 1000);
+
+    function buyBlock(type) {
+      if (type === "+2") {
+        if (money >= costPlus2) {
+          // Voeg +2 block toe naast factory als mogelijk
+          const pos = findFreeSpot();
+          if (!pos) return alert("Geen vrije plek om +2 block te plaatsen!");
+          blocks.push({ x: pos.x, y: pos.y, type: "+2", rotation: 0 });
+          money -= costPlus2;
+          costPlus2 = Math.floor(costPlus2 * 1.5);
+          document.getElementById("costPlus2").textContent = costPlus2;
+        } else {
+          alert("Niet genoeg geld!");
+        }
+      } else if (type === "x2") {
+        if (money >= costX2) {
+          const pos = findFreeSpot();
+          if (!pos) return alert("Geen vrije plek om x2 block te plaatsen!");
+          blocks.push({ x: pos.x, y: pos.y, type: "x2", rotation: 0 });
+          money -= costX2;
+          costX2 = Math.floor(costX2 * 1.5);
+          document.getElementById("costX2").textContent = costX2;
+        } else {
+          alert("Niet genoeg geld!");
+        }
+      } else if (type === "bocht") {
+        if (money >= 500) {
+          const pos = findFreeSpot();
+          if (!pos) return alert("Geen vrije plek om bocht te plaatsen!");
+          blocks.push({ x: pos.x, y: pos.y, type: "bocht", rotation: 0 });
+          money -= 500;
+        } else {
+          alert("Niet genoeg geld!");
+        }
+      }
+      document.getElementById("money").textContent = money;
+      createGrid();
+    }
+
+    function findFreeSpot() {
+      // Zoek eerste vrije plek naast factory
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (!isOccupied(x, y)) return { x, y };
+        }
+      }
+      return null;
+    }
+
     function saveGame() {
-      const data = {
+      const saveData = {
         money,
+        blocks,
         factory,
         sell,
-        blocks,
-        clocks
+        costPlus2,
+        costX2
       };
-      localStorage.setItem("clockFactorySave", JSON.stringify(data));
+      localStorage.setItem('clockFactorySave', JSON.stringify(saveData));
       alert("Game opgeslagen!");
     }
 
     function loadGame() {
-      const data = localStorage.getItem("clockFactorySave");
-      if (data) {
-        const obj = JSON.parse(data);
-        money = obj.money;
-        Object.assign(factory, obj.factory);
-        Object.assign(sell, obj.sell);
+      const saveData = JSON.parse(localStorage.getItem('clockFactorySave'));
+      if (saveData) {
+        money = saveData.money || 0;
         blocks.length = 0;
-        obj.blocks.forEach(b => blocks.push(b));
-        clocks.length = 0;
-        obj.clocks.forEach(c => clocks.push(c));
+        saveData.blocks.forEach(b => blocks.push(b));
+        factory.x = saveData.factory.x;
+        factory.y = saveData.factory.y;
+        factory.rotation = saveData.factory.rotation;
+        sell.x = saveData.sell.x;
+        sell.y = saveData.sell.y;
+        sell.rotation = saveData.sell.rotation;
+        costPlus2 = saveData.costPlus2 ?? 100;
+        costX2 = saveData.costX2 ?? 200;
+
         document.getElementById("money").textContent = money;
+        document.getElementById("costPlus2").textContent = costPlus2;
+        document.getElementById("costX2").textContent = costX2;
+
+        selected = null;
         createGrid();
+        alert("Game geladen!");
       } else {
-        alert("Geen opgeslagen game gevonden.");
+        alert("Geen opgeslagen spel gevonden.");
       }
     }
 
-    // Buttons toevoegen voor save/load
-    const saveBtn = document.createElement("button");
-    saveBtn.textContent = "Save Game";
-    saveBtn.onclick = saveGame;
-
-    const loadBtn = document.createElement("button");
-    loadBtn.textContent = "Load Game";
-    loadBtn.onclick = loadGame;
-
-    document.getElementById("sidebar").appendChild(saveBtn);
-    document.getElementById("sidebar").appendChild(loadBtn);
-
     createGrid();
 
-    setInterval(() => {
-      spawnClock();
-      updateClocks();
-      renderClocks();
-    }, 1000);
+    // Update prijzen en geld bij start
+    document.getElementById("money").textContent = money;
+    document.getElementById("costPlus2").textContent = costPlus2;
+    document.getElementById("costX2").textContent = costX2;
   </script>
 </body>
 </html>
