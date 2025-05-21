@@ -81,6 +81,11 @@
     button:hover {
       background-color: #45a049;
     }
+
+    .selected {
+      outline: 2px solid yellow;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
@@ -132,14 +137,17 @@
             cell.classList.add("factory");
             cell.innerHTML = `<span class="arrow">→</span>`;
             cell.querySelector(".arrow").style.transform = `rotate(${factory.rotation}deg)`;
+            if (selected === factory) cell.classList.add("selected");
           } else if (x === sell.x && y === sell.y) {
             cell.classList.add("sell");
             cell.innerHTML = "SELL";
+            if (selected === sell) cell.classList.add("selected");
           } else {
             const block = blocks.find(b => b.x === x && b.y === y);
             if (block) {
               cell.classList.add("block");
               cell.textContent = block.type;
+              if (selected === block) cell.classList.add("selected");
             }
           }
 
@@ -151,6 +159,10 @@
             } else {
               if (x === factory.x && y === factory.y) selected = factory;
               else if (x === sell.x && y === sell.y) selected = sell;
+              else {
+                const block = blocks.find(b => b.x === x && b.y === y);
+                if (block) selected = block;
+              }
             }
             createGrid();
           });
@@ -179,51 +191,49 @@
     }
 
     function updateClocks() {
-  for (let i = clocks.length - 1; i >= 0; i--) {
-    const clock = clocks[i];
+      for (let i = clocks.length - 1; i >= 0; i--) {
+        const clock = clocks[i];
 
-    const nextX = clock.x + clock.dx;
-    const nextY = clock.y + clock.dy;
+        const block = blocks.find(b => b.x === clock.x && b.y === clock.y);
+        if (block && block.type === "bocht") {
+          const [dx, dy] = [clock.dx, clock.dy];
+          if (dx === 1 && dy === 0) [clock.dx, clock.dy] = [0, 1];
+          else if (dx === 0 && dy === 1) [clock.dx, clock.dy] = [-1, 0];
+          else if (dx === -1 && dy === 0) [clock.dx, clock.dy] = [0, -1];
+          else if (dx === 0 && dy === -1) [clock.dx, clock.dy] = [1, 0];
+        }
 
-    if (
-      nextX < 0 || nextX >= size ||
-      nextY < 0 || nextY >= size
-    ) {
-      clocks.splice(i, 1);
-      continue;
-    }
+        clock.x += clock.dx;
+        clock.y += clock.dy;
 
-    const block = blocks.find(b => b.x === nextX && b.y === nextY);
-    if (block) {
-      if (block.type === "+2") clock.value += 2;
-      else if (block.type === "x2") clock.value *= 2;
-      else if (block.type === "bocht") {
-        // Simpele bocht logica als voorbeeld (draait altijd rechtsaf)
-        const newDir = [clock.dy, -clock.dx];
-        clock.dx = newDir[0];
-        clock.dy = newDir[1];
+        if (block) {
+          if (block.type === "+2") clock.value += 2;
+          else if (block.type === "x2") clock.value *= 2;
+        }
+
+        if (clock.x === sell.x && clock.y === sell.y) {
+          money += clock.value;
+          document.getElementById("money").textContent = money;
+          clocks.splice(i, 1);
+        } else if (
+          clock.x < 0 || clock.x >= size ||
+          clock.y < 0 || clock.y >= size
+        ) {
+          clocks.splice(i, 1);
+        }
       }
     }
 
-    clock.x = nextX;
-    clock.y = nextY;
-
-    if (clock.x === sell.x && clock.y === sell.y) {
-      money += clock.value;
-      document.getElementById("money").textContent = money;
-      clocks.splice(i, 1);
-    }
-  }
-}
-
-
     function renderClocks() {
+      document.querySelectorAll(".clock").forEach(elem => elem.remove());
       clocks.forEach(clock => {
-        const clockElem = document.createElement("div");
-        clockElem.classList.add("clock");
-        clockElem.style.left = `${clock.x * 41 + 10}px`;
-        clockElem.style.top = `${clock.y * 41 + 10}px`;
-        game.appendChild(clockElem);
+        if (clock.x >= 0 && clock.x < size && clock.y >= 0 && clock.y < size) {
+          const clockElem = document.createElement("div");
+          clockElem.classList.add("clock");
+          clockElem.style.left = `${clock.x * 41 + 10}px`;
+          clockElem.style.top = `${clock.y * 41 + 10}px`;
+          game.appendChild(clockElem);
+        }
       });
     }
 
@@ -231,12 +241,13 @@
       let cost = 0;
       if (type === "+2") cost = costPlus2;
       if (type === "x2") cost = costX2;
-      if (type === "bocht") cost = 500; // bocht nog niet functioneel
+      if (type === "bocht") cost = 500;
       if (money >= cost) {
         money -= cost;
         document.getElementById("money").textContent = money;
-        blocks.push({ x: 0, y: 0, type });
-        selected = blocks[blocks.length - 1];
+        const newBlock = { x: 0, y: 0, type, rotation: 0 };
+        blocks.push(newBlock);
+        selected = newBlock;
 
         if (type === "+2") {
           costPlus2 = Math.ceil(costPlus2 * 1.5);
