@@ -70,7 +70,7 @@ function generateWorldChunk(cx, cy, radius = 15) {
 
 const player = {
   x: 0,
-  y: 9,         // Player 2 blocks hoog, start net boven grond
+  y: 9,         // Player startpositie
   width: 0.8,
   height: 2,
   speed: 0.12
@@ -81,13 +81,20 @@ let worldOffsetY = player.y - (VIEWPORT_HEIGHT / BLOCK_SIZE) / 2;
 
 generateWorldChunk(player.x, player.y);
 
+// *** Hier staat de collision-check ***
 function isSolidBlock(x, y) {
   const blockId = worldData.get(`${Math.floor(x)},${Math.floor(y)}`);
   if (blockId === undefined) return false;
-  return blockId !== 0 && blockId !== 4;
+
+  // air, wood en leaves zijn niet solid
+  if (blockId === 0 || blockId === 3 || blockId === 4) return false;
+
+  // alle andere blokken zijn solid
+  return true;
 }
 
 function canMoveTo(newX, newY) {
+  // Controleer alle 4 hoeken van de player hitbox
   const corners = [
     {x: newX, y: newY},
     {x: newX + player.width, y: newY},
