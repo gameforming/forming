@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>MineSell 2D - Infinite World with Blocks</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #333; }
+  canvas { display: block; background: #99ccff; cursor: none; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const BLOCK_SIZE = 32;
+const VIEWPORT_WIDTH = window.innerWidth;
+const VIEWPORT_HEIGHT = window.innerHeight;
+
+canvas.width = VIEWPORT_WIDTH;
+canvas.height = VIEWPORT_HEIGHT;
+
+// Block types and their colors
+const BLOCK_TYPES = {
+  0: {name: 'Air', color: '#87ceeb'},       // Sky blue
+  1: {name: 'Grass', color: '#228B22'},     // Green
+  2: {name: 'Stone', color: '#7D7D7D'},     // Gray
+  3: {name: 'Wood', color: '#A0522D'},      // Brown
+  4: {name: 'Leaves', color: '#32CD32'},    // Lime Green
+  5: {name: 'Iron', color: '#D8D8D8'},      // Light Gray
+  6: {name: 'Diamond', color: '#00FFFF'},   // Cyan
+  7: {name: 'Coal', color: '#2F2F2F'},      // Dark Gray/Black
+  8: {name: 'Gold', color: '#FFD700'}       // Gold
+};
+
+// World data storage (key = 'x,y', value = blockType ID)
+const worldData = new Map();
+
+// Generate block type based on x,y with rarity for ores
+function getBlockType(x, y) {
+  if (y < 10) return 0; // Air above y=10
+  if (y === 10) return 1; // Grass at y=10
+
+  if (y > 10 && y < 15) return 2; // Stone layer under grass
+
+  if (y >= 15) {
+    // Simple deterministic pseudo-random "hash" function
+    const n = Math.abs((x * 31 + y * 17)) % 100;
+
+    if (n < 2) return 6;  // Diamond ~2%
+    if (n < 7) return 8;  // Gold ~5%
+    if (n < 17) return 5; // Iron ~10%
+    if (n < 32) return 7; // Coal ~15%
+
+    return 2; // Stone default
+  }
+
+  // Trees - wood trunks and leaves
+  if (y === 9 && Math.abs(x) % 15 === 0) return 3; // Wood trunk
+  if ((y === 8 || y === 7) && Math.abs(x) % 15 === 0) return 4; // Leaves
+
+  return 0; // Air default
+}
+
+// Generate blocks around a center chunk
+function generateWorldChunk(cx, cy, radius = 15) {
+  for (let x = cx - radius; x <= cx + radius; x++) {
+    for (let y = cy - radius; y <= cy + radius; y++) {
+      const key = `${x},${y}`;
+      if (!worldData.has(key)) {
+        worldData.set(key, getBlockType(x, y));
+      }
+    }
+  }
+}
+
+// World offset in blocks (the "camera" offset)
+let worldOffsetX = 0;
+let worldOffsetY = 0;
+
+// Initial generation
+generateWorldChunk(0, 0);
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const blocksHoriz = Math.ceil(VIEWPORT_WIDTH / BLOCK_SIZE) + 2;
+  const blocksVert = Math.ceil(VIEWPORT_HEIGHT / BLOCK_SIZE) + 2;
+
+  const startX = Math.floor(worldOffsetX);
+  const startY = Math.floor(worldOffsetY);
+
+  generateWorldChunk(Math.floor(worldOffsetX + blocksHoriz / 2), Math.floor(worldOffsetY + blocksVert / 2), Math.max(blocksHoriz, blocksVert));
+
+  for (let x = startX; x < startX + blocksHoriz; x++) {
+    for (let y = startY; y < startY + blocksVert; y++) {
+      const key = `${x},${y}`;
+      const blockId = worldData.get(key) ?? 0;
+      const block = BLOCK_TYPES[blockId];
+      const screenX = (x - worldOffsetX) * BLOCK_SIZE;
+      const screenY = (y - worldOffsetY) * BLOCK_SIZE;
+
+      ctx.fillStyle = block.color;
+      ctx.fillRect(screenX, screenY, BLOCK_SIZE, BLOCK_SIZE);
+
+      ctx.strokeStyle = '#555';
+      ctx.strokeRect(screenX, screenY, BLOCK_SIZE, BLOCK_SIZE);
+    }
+  }
+
+  // Draw player as a red square in center
+  const playerSize = BLOCK_SIZE * 0.8;
+  ctx.fillStyle = 'red';
+  ctx.fillRect(
+    VIEWPORT_WIDTH / 2 - playerSize / 2,
+    VIEWPORT_HEIGHT / 2 - playerSize / 2,
+    playerSize,
+    playerSize
+  );
+}
+
+// Movement keys WASD
+const keysPressed = {};
+window.addEventListener('keydown', e => {
+  keysPressed[e.key.toLowerCase()] = true;
+});
+window.addEventListener('keyup', e => {
+  keysPressed[e.key.toLowerCase()] = false;
+});
+
+function update() {
+  const speed = 0.1; // blocks per frame
+
+  if (keysPressed['a']) worldOffsetX -= speed;
+  if (keysPressed['d']) worldOffsetX += speed;
+  if (keysPressed['w']) worldOffsetY -= speed;
+  if (keysPressed['s']) worldOffsetY += speed;
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
