@@ -1,241 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Clock Factory Tycoon</title>
   <style>
-    body {
-      display: flex;
-      font-family: sans-serif;
-      margin: 0;
-    }
-    #game {
-      display: grid;
-      grid-template-columns: repeat(16, 40px);
-      grid-template-rows: repeat(16, 40px);
-      gap: 2px;
-      padding: 10px;
-      background: #ddd;
-    }
-    .tile {
-      width: 40px;
-      height: 40px;
-      background: white;
-      border: 1px solid #aaa;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-    .selected {
-      border: 3px solid red;
-    }
-    #sidebar {
-      width: 200px;
-      padding: 10px;
-      background: #eee;
-    }
-    button {
-      width: 100%;
-      margin-top: 5px;
-    }
+    body { font-family: sans-serif; display: flex; }
+    canvas { border: 1px solid #000; }
+    #sidebar { margin-left: 10px; }
+    button { margin: 5px 0; }
   </style>
 </head>
 <body>
-  <div id="game"></div>
+  <canvas id="game" width="512" height="512"></canvas>
   <div id="sidebar">
-    <h3>Clock Factory Tycoon</h3>
-    <p id="money">Money: €0</p>
-    <button onclick="buyBlock('+2')">Buy +2 Block (€50)</button>
-    <button onclick="buyBlock('x2')">Buy x2 Block (€100)</button>
-    <button onclick="saveGame()">Save Game</button>
-    <button onclick="loadGame()">Load Game</button>
+    <h3>Shop</h3>
+    <button onclick="selectBlock('factory')">Factory</button>
+    <button onclick="selectBlock('sell')">Sell</button>
+    <button onclick="selectBlock('+2')">+2</button>
+    <button onclick="selectBlock('x2')">x2</button>
+    <button onclick="selectBlock('turn-left')">Turn Left</button>
+    <button onclick="selectBlock('turn-right')">Turn Right</button>
+    <br>
+    <button onclick="goHome()">Back to homepage</button>
   </div>
 
   <script>
-    const gridSize = 16;
-    const game = document.getElementById("game");
-    const moneyDisplay = document.getElementById("money");
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const gridSize = 32;
+    const gridWidth = 16;
+    const gridHeight = 16;
 
-    let money = 0;
-    const blocks = [];
-    const grid = [];
-    const gameState = {};
+    let selectedBlock = null;
+    const grid = Array.from({ length: gridHeight }, () => Array(gridWidth).fill(null));
+    const factories = [];
+    const clocks = [];
 
-    const factory = { x: 0, y: 0, dir: "right" };
-    const sell = { x: 15, y: 15 };
-    let selected = factory;
+    function selectBlock(type) {
+      selectedBlock = type;
+    }
 
-    function createGrid() {
-      game.innerHTML = "";
-      grid.length = 0;
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          const tile = document.createElement("div");
-          tile.className = "tile";
-          tile.onclick = () => {
-            const foundBlock = blocks.find(b => b.x === x && b.y === y);
-            if (foundBlock) {
-              selected = foundBlock;
-            } else if (x === factory.x && y === factory.y) {
-              selected = factory;
-            } else if (x === sell.x && y === sell.y) {
-              selected = sell;
-            } else {
-              selected = null;
-            }
-            render();
-          };
-          grid.push({ x, y, tile });
-          game.appendChild(tile);
+    function goHome() {
+      window.location.href = 'index.html';
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / gridSize);
+      const y = Math.floor((e.clientY - rect.top) / gridSize);
+      if (selectedBlock) {
+        grid[y][x] = selectedBlock;
+        if (selectedBlock === 'factory') {
+          factories.push({ x, y });
         }
-      }
-      render();
-    }
-
-    function render() {
-      for (const { x, y, tile } of grid) {
-        tile.textContent = "";
-        tile.classList.remove("selected");
-        if (x === factory.x && y === factory.y) {
-          tile.textContent = "🏭";
-        } else if (x === sell.x && y === sell.y) {
-          tile.textContent = "💰";
-        } else {
-          const block = blocks.find(b => b.x === x && b.y === y);
-          if (block) {
-            tile.textContent = block.type;
-          }
-        }
-
-        if (
-          selected &&
-          selected.x === x &&
-          selected.y === y
-        ) {
-          tile.classList.add("selected");
-        }
-      }
-      moneyDisplay.textContent = `Money: €${money}`;
-    }
-
-    function moveSelected(dx, dy) {
-      if (!selected) return;
-      selected.x = Math.max(0, Math.min(gridSize - 1, selected.x + dx));
-      selected.y = Math.max(0, Math.min(gridSize - 1, selected.y + dy));
-      render();
-    }
-
-    function rotateFactory() {
-      const dirs = ["right", "down", "left", "up"];
-      const index = dirs.indexOf(factory.dir);
-      factory.dir = dirs[(index + 1) % 4];
-      render();
-    }
-
-    function buyBlock(type) {
-      const cost = type === "+2" ? 50 : 100;
-      if (money < cost) return alert("Not enough money!");
-      const pos = findFreePosition();
-      if (!pos) return alert("No space!");
-      blocks.push({ x: pos.x, y: pos.y, type });
-      money -= cost;
-      render();
-    }
-
-    function findFreePosition() {
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          if (
-            !blocks.some(b => b.x === x && b.y === y) &&
-            !(x === factory.x && y === factory.y) &&
-            !(x === sell.x && y === sell.y)
-          ) return { x, y };
-        }
-      }
-      return null;
-    }
-
-    function update() {
-      let value = 1;
-      let x = factory.x;
-      let y = factory.y;
-      for (let i = 0; i < 10; i++) {
-        switch (factory.dir) {
-          case "right": x++; break;
-          case "left": x--; break;
-          case "down": y++; break;
-          case "up": y--; break;
-        }
-        if (x === sell.x && y === sell.y) {
-          money += value;
-          break;
-        }
-        const block = blocks.find(b => b.x === x && b.y === y);
-        if (!block) break;
-        if (block.type === "+2") value += 2;
-        if (block.type === "x2") value *= 2;
-      }
-      render();
-    }
-
-    function saveGame() {
-      gameState.selected = selected && selected !== factory && selected !== sell
-        ? { x: selected.x, y: selected.y }
-        : selected === factory
-          ? "factory"
-          : selected === sell
-            ? "sell"
-            : null;
-
-      localStorage.setItem("clockFactoryTycoonSave", JSON.stringify({
-        money,
-        factory,
-        sell,
-        blocks,
-        selected: gameState.selected
-      }));
-      alert("Game opgeslagen!");
-    }
-
-    function loadGame() {
-      const state = JSON.parse(localStorage.getItem("clockFactoryTycoonSave"));
-      if (!state) return alert("No save found!");
-      money = state.money;
-      factory.x = state.factory.x;
-      factory.y = state.factory.y;
-      factory.dir = state.factory.dir;
-      sell.x = state.sell.x;
-      sell.y = state.sell.y;
-      blocks.length = 0;
-      for (const b of state.blocks) blocks.push({ ...b });
-
-      if (state.selected === "factory") {
-        selected = factory;
-      } else if (state.selected === "sell") {
-        selected = sell;
-      } else if (state.selected && typeof state.selected.x === "number") {
-        selected = blocks.find(b => b.x === state.selected.x && b.y === state.selected.y) || null;
-      } else {
-        selected = null;
-      }
-
-      render();
-    }
-
-    // Controls
-    document.addEventListener("keydown", e => {
-      switch (e.key) {
-        case "ArrowUp": moveSelected(0, -1); break;
-        case "ArrowDown": moveSelected(0, 1); break;
-        case "ArrowLeft": moveSelected(-1, 0); break;
-        case "ArrowRight": moveSelected(1, 0); break;
-        case "r": rotateFactory(); break;
       }
     });
 
-    createGrid();
-    setInterval(update, 1000);
+    function spawnClocks() {
+      factories.forEach(f => {
+        clocks.push({ x: f.x, y: f.y, dir: 'right' });
+      });
+    }
+
+    function updateClocks() {
+      clocks.forEach(clock => {
+        const block = grid[clock.y]?.[clock.x];
+        if (block === 'turn-left') {
+          if (clock.dir === 'right') clock.dir = 'up';
+          else if (clock.dir === 'down') clock.dir = 'left';
+          else if (clock.dir === 'left') clock.dir = 'down';
+          else if (clock.dir === 'up') clock.dir = 'right';
+        } else if (block === 'turn-right') {
+          if (clock.dir === 'up') clock.dir = 'right';
+          else if (clock.dir === 'right') clock.dir = 'down';
+          else if (clock.dir === 'down') clock.dir = 'left';
+          else if (clock.dir === 'left') clock.dir = 'up';
+        }
+
+        if (clock.dir === 'right') clock.x++;
+        else if (clock.dir === 'left') clock.x--;
+        else if (clock.dir === 'up') clock.y--;
+        else if (clock.dir === 'down') clock.y++;
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let y = 0; y < gridHeight; y++) {
+        for (let x = 0; x < gridWidth; x++) {
+          ctx.strokeStyle = '#aaa';
+          ctx.strokeRect(x * gridSize, y * gridSize, gridSize, gridSize);
+
+          const block = grid[y][x];
+          if (block) {
+            ctx.fillStyle = block === 'factory' ? 'gray'
+                           : block === 'sell' ? 'green'
+                           : block === '+2' ? 'orange'
+                           : block === 'x2' ? 'blue'
+                           : block === 'turn-left' ? 'purple'
+                           : block === 'turn-right' ? 'pink'
+                           : 'white';
+            ctx.fillRect(x * gridSize + 4, y * gridSize + 4, gridSize - 8, gridSize - 8);
+          }
+        }
+      }
+
+      clocks.forEach(clock => {
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(clock.x * gridSize + gridSize / 2, clock.y * gridSize + gridSize / 2, 8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    setInterval(() => {
+      spawnClocks();
+      updateClocks();
+      draw();
+    }, 1000);
   </script>
 </body>
 </html>
