@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Minesell 2D - Inventory + Break & Place</title>
+<style>
+  body { margin:0; overflow:hidden; background:#000; font-family: monospace; }
+  canvas { display:block; background:#87CEEB; margin:0 auto; }
+  #inventory {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(30,30,30,0.9);
+    border: 3px solid #666;
+    padding: 10px;
+    display: none;
+    width: 384px; /* 8 slots * 48px */
+    height: 96px;
+    box-sizing: border-box;
+    border-radius: 8px;
+  }
+  .slot {
+    width: 48px;
+    height: 48px;
+    background: #222;
+    border: 2px solid #555;
+    float: left;
+    margin: 4px;
+    position: relative;
+    cursor: pointer;
+  }
+  .slot.selected {
+    border-color: #0f0;
+  }
+  .block-icon {
+    width: 40px;
+    height: 40px;
+    margin: 4px;
+    pointer-events: none;
+  }
+  .count {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 14px;
+    color: white;
+    text-shadow: 0 0 3px black;
+    user-select: none;
+  }
+  #inventory-title {
+    color: white;
+    margin-bottom: 6px;
+    font-size: 18px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="inventory">
+  <div id="inventory-title">Inventory (Press E to close)</div>
+  <!-- Slots will be dynamically created -->
+</div>
+
+<script>
+// --- CONFIG ---
+
+const BLOCK_SIZE = 32;
+const VIEW_WIDTH = 20;
+const VIEW_HEIGHT = 15;
+
+const BLOCKS = {
+  grass: {color:"#3cba54", solid:true, breakTime:3},
+  stone: {color:"#7f7f7f", solid:true, breakTime:5},
+  dirt: {color:"#8b5a2b", solid:true, breakTime:3},
+  wood: {color:"#a0522d", solid:false, breakTime:3},    // Can walk through wood
+  leaves: {color:"#228b22", solid:true, breakTime:3},
+  coal: {color:"#2f2f2f", solid:true, breakTime:4},
+  iron: {color:"#d8d8d8", solid:true, breakTime:4},
+  gold: {color:"#ffd700", solid:true, breakTime:4},
+  diamond: {color:"#00ffff", solid:true, breakTime:4},
+  air: {color:"#87CEEB", solid:false, breakTime:0}
+};
+
+// --- WORLD GENERATION ---
+
+function terrainHeight(x){
+  return Math.floor(5 + 3 * Math.sin(x / 5) + 2 * Math.sin(x / 10));
+}
+
+function generateBlock(x,y){
+  if(y > terrainHeight(x)) return "air";
+  if(y === terrainHeight(x)) return "grass";
+  if(y > terrainHeight(x) - 3) return "dirt";
+  if(y === terrainHeight(x) - 3){
+    let r = Math.random();
+    if(r < 0.02) return "diamond";
+    if(r < 0.05) return "gold";
+    if(r < 0.12) return "iron";
+    if(r < 0.20) return "coal";
+    return "stone";
+  }
+  return "stone";
+}
+
+function generateTree(world, baseX, baseY){
+  for(let i=1; i<=3; i++){
+    world.setBlock(baseX, baseY - i, "wood");
+  }
+  for(let dx=-1; dx<=1; dx++){
+    for(let dy=-1; dy<=1; dy++){
+      if(Math.abs(dx) + Math.abs(dy) <= 2){
+        if(world.getBlock(baseX + dx, baseY - 4 + dy) === "air"){
+          world.setBlock(baseX + dx, baseY - 4 + dy, "leaves");
+        }
+      }
+    }
+  }
+}
+
+// --- WORLD CLASS ---
+
+class World {
+  constructor(){
+    this.blocks = new Map();
+  }
+  getKey(x,y){ return x+","+y; }
+  setBlock(x,y,type){ 
+    if(type === "air") this.blocks.delete(this.getKey(x,y));
+    else this.blocks.set(this.getKey(x,y), type); 
+  }
+  getBlock(x,y){
+    let b = this.blocks.get(this.getKey(x,y));
+    if(b !== undefined) return b;
+    let gen = generateBlock(x,y);
+    this.setBlock(x,y, gen);
+    if(gen === "grass" && Math.random() < 0.05){
+      generateTree(this, x, y);
+    }
+    return gen;
+  }
+}
+
+// --- INVENTORY CLASS ---
+
+class Inventory {
+  constructor(size){
+    this.size = size;
+    this.items = {};
+    // items = { blockName: count }
+  }
+  
+  add(blockName, count=1){
+    if(!BLOCKS[blockName]) return false;
+    if(this.items[blockName]) this.items[blockName] += count;
+    else this.items[blockName] = count;
+    return true;
+  }
+  
+  remove(blockName, count=1){
+    if(!this.items[blockName]) return false;
+    this.items[blockName] -= count;
+    if(this.items[blockName] <= 0) delete this.items[blockName];
+    return true;
+  }
+  
+  has(blockName){
+    return !!this.items[blockName];
+  }
+  
+  count(blockName){
+    return this.items[blockName] || 0;
+  }
+}
+
+// --- SETUP ---
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = BLOCK_SIZE * VIEW_WIDTH;
+canvas.height = BLOCK_SIZE * VIEW_HEIGHT;
+
+let world = new World();
+let offsetX = 0;
+let offsetY = 0;
+
+const playerX = Math.floor(VIEW_WIDTH/2);
+const playerY = Math.floor(VIEW_HEIGHT/2);
+
+const keysDown = {};
+let inventoryVisible = false;
+
+const inventoryDiv = document.getElementById("inventory");
+const inventorySize = 8; // slots
+const inventory = new Inventory(inventorySize);
+
+let selectedInventoryIndex = 0;
+let breakStartTime = null;
+let breakingBlockPos = null;
+let breakingBlockType = null;
+
+let mouseDownLeft = false;
+let mouseDownRight = false;
+let mouseX = 0;
+let mouseY = 0;
+
+// --- INPUT ---
+
+window.addEventListener("keydown", e => {
+  if(e.key.toLowerCase() === "e"){
+    inventoryVisible = !inventoryVisible;
+    inventoryDiv.style.display = inventoryVisible ? "block" : "none";
+  }
+  keysDown[e.key.toLowerCase()] = true;
+});
+
+window.addEventListener("keyup", e => {
+  keysDown[e.key.toLowerCase()] = false;
+});
+
+canvas.addEventListener("mousedown", e => {
+  if(inventoryVisible) return; // no break/place when inventory open
+  if(e.button === 0) mouseDownLeft = true;
+  if(e.button === 2) mouseDownRight = true;
+});
+
+canvas.addEventListener("mouseup", e => {
+  if(e.button === 0) {
+    mouseDownLeft = false; 
+    breakStartTime = null;
+    breakingBlockPos = null;
+    breakingBlockType = null;
+  }
+  if(e.button === 2) mouseDownRight = false;
+});
+
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+canvas.addEventListener("mousemove", e => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = e.clientX - rect.left;
+  mouseY = e.clientY - rect.top;
+});
+
+// --- INVENTORY UI ---
+
+function createInventoryUI(){
+  inventoryDiv.innerHTML = '<div id="inventory-title">Inventory (Press E to close)</div>';
+  for(let i=0; i<inventorySize; i++){
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.dataset.index = i;
+    if(i === selectedInventoryIndex) slot.classList.add("selected");
+    inventoryDiv.appendChild(slot);
+  }
+}
+createInventoryUI();
+
+function updateInventoryUI(){
+  const slots = inventoryDiv.querySelectorAll(".slot");
+  for(let i=0; i<inventorySize; i++){
+    const slot = slots[i];
+    slot.innerHTML = ""; // clear
+    // show block icon and count if inventory slot filled
+    const blockNames = Object.keys(inventory.items);
+    if(i < blockNames.length){
+      const block = blockNames[i];
+      const color = BLOCKS[block].color;
+      const icon = document.createElement("div");
+      icon.className = "block-icon";
+      icon.style.backgroundColor = color;
+      slot.appendChild(icon);
+      
+      const count = document.createElement("div");
+      count.className = "count";
+      count.textContent = inventory.count(block);
+      slot.appendChild(count);
+      
+      // Store blockName on slot for click
+      slot.dataset.block = block;
+    } else {
+      slot.dataset.block = "";
+    }
+    
+    if(i === selectedInventoryIndex){
+      slot.classList.add("selected");
+    } else {
+      slot.classList.remove("selected");
+    }
+  }
+}
+
+// Click inventory slot to select block
+inventoryDiv.addEventListener("click", e => {
+  if(!e.target.classList.contains("slot") && !e.target.parentElement.classList.contains("slot")) return;
+  const slot = e.target.classList.contains("slot") ? e.target : e.target.parentElement;
+  const index = parseInt(slot.dataset.index);
+  if(index >= 0 && index < inventorySize){
+    selectedInventoryIndex = index;
+    updateInventoryUI();
+  }
+});
+
+// --- GAME LOGIC ---
+
+function canWalkThrough(blockType){
+  if(blockType === "air") return true;
+  if(blockType === "wood") return true; // walk through wood
+  return false;
+}
+
+function update(dt){
+  const speed = 5; // blocks per second
+
+  // Movement keys (scroll world)
+  if(keysDown["a"] || keysDown["arrowleft"]) offsetX += speed * dt;
+  if(keysDown["d"] || keysDown["arrowright"]) offsetX -= speed * dt;
+  if(keysDown["w"] || keysDown["arrowup"]) offsetY += speed * dt;
+  if(keysDown["s"] || keysDown["arrowdown"]) offsetY -= speed * dt;
+
+  // Prevent player going through solid blocks except wood and air (collisions)
+  // We check 2 blocks height player (playerY and playerY -1)
+  // Player pos fixed center, so check blocks player covers
+  let px = -Math.floor(offsetX) + playerX;
+  let py = -Math.floor(offsetY) + playerY;
+  
+  // check blocks at feet and head, for collisions if solid and not wood/air
+  function isSolidBlock(x,y){
+    let b = world.getBlock(x,y);
+    if(b === "wood" || b === "air") return false;
+    return BLOCKS[b] && BLOCKS[b].solid;
+  }
+  
+  // horizontal collision
+  if(isSolidBlock(Math.floor(px), Math.floor(py)) || isSolidBlock(Math.floor(px), Math.floor(py)-1)){
+    if(keysDown["a"] || keysDown["arrowleft"]) offsetX -= speed * dt;
+    if(keysDown["d"] || keysDown["arrowright"]) offsetX += speed * dt;
+  }
+  // vertical collision
+  if(isSolidBlock(Math.floor(px), Math.floor(py)) || isSolidBlock(Math.floor(px), Math.floor(py)-1)){
+    if(keysDown["w"] || keysDown["arrowup"]) offsetY -= speed * dt;
+    if(keysDown["s"] || keysDown["arrowdown"]) offsetY += speed * dt;
+  }
+
+  // BREAKING BLOCKS (left click hold)
+  if(mouseDownLeft && !inventoryVisible){
+    const blockPos = getMouseBlockPos();
+    const blockType = world.getBlock(blockPos.x, blockPos.y);
+    if(blockType !== "air"){
+      if(breakingBlockPos && (breakingBlockPos.x === blockPos.x && breakingBlockPos.y === blockPos.y)){
+        // Continue breaking
+        if(!breakStartTime) breakStartTime = performance.now();
+        const elapsed = (performance.now() - breakStartTime) / 1000;
+        if(elapsed >= BLOCKS[blockType].breakTime){
+          world.setBlock(blockPos.x, blockPos.y, "air");
+          inventory.add(blockType, 1);
+          updateInventoryUI();
+          breakStartTime = null;
+          breakingBlockPos = null;
+          breakingBlockType = null;
+        }
+      } else {
+        // Started breaking a new block
+        breakStartTime = performance.now();
+        breakingBlockPos = blockPos;
+        breakingBlockType = blockType;
+      }
+    } else {
+      breakStartTime = null;
+      breakingBlockPos = null;
+      breakingBlockType = null;
+    }
+  } else {
+    breakStartTime = null;
+    breakingBlockPos = null;
+    breakingBlockType = null;
+  }
+
+  // PLACING BLOCKS (right click hold)
+  if(mouseDownRight && !inventoryVisible){
+    const blockPos = getMouseBlockPos();
+    const blockType = world.getBlock(blockPos.x, blockPos.y);
+    // Only place if air and have block in inventory
+    if(blockType === "air"){
+      const blockNames = Object.keys(inventory.items);
+      if(blockNames.length > 0){
+        const selectedBlock = blockNames[selectedInventoryIndex] || null;
+        if(selectedBlock && inventory.has(selectedBlock)){
+          world.setBlock(blockPos.x, blockPos.y, selectedBlock);
+          inventory.remove(selectedBlock,1);
+          updateInventoryUI();
+        }
+      }
+    }
+  }
+}
+
+function getMouseBlockPos(){
+  const bx = Math.floor(mouseX / BLOCK_SIZE) - Math.floor(offsetX);
+  const by = Math.floor(mouseY / BLOCK_SIZE) - Math.floor(offsetY);
+  return {x: bx, y: by};
+}
+
+// --- DRAWING ---
+
+function drawBlock(x, y, blockType){
+  const screenX = (x + offsetX) * BLOCK_SIZE;
+  const screenY = (y + offsetY) * BLOCK_SIZE;
+  ctx.fillStyle = BLOCKS[blockType].color;
+  ctx.fillRect(screenX, screenY, BLOCK_SIZE, BLOCK_SIZE);
+
+  // Draw break progress bar if breaking this block
+  if(breakingBlockPos && breakingBlockPos.x === x && breakingBlockPos.y === y){
+    const elapsed = (performance.now() - breakStartTime) / 1000;
+    let progress = Math.min(elapsed / BLOCKS[blockType].breakTime, 1);
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.fillRect(screenX, screenY + BLOCK_SIZE - 4, BLOCK_SIZE * progress, 4);
+  }
+}
+
+function drawPlayer(){
+  // Player is 2 blocks high
+  const px = (playerX) * BLOCK_SIZE;
+  const py = (playerY - 1) * BLOCK_SIZE;
+  ctx.fillStyle = "#FF4500";
+  ctx.fillRect(px, py, BLOCK_SIZE, BLOCK_SIZE * 2);
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width, canvas.height);
+  const startX = Math.floor(-offsetX);
+  const startY = Math.floor(-offsetY);
+  const endX = startX + VIEW_WIDTH + 1;
+  const endY = startY + VIEW_HEIGHT + 1;
+
+  // Draw blocks
+  for(let y = startY; y <= endY; y++){
+    for(let x = startX; x <= endX; x++){
+      const b = world.getBlock(x,y);
+      if(b !== "air") drawBlock(x,y,b);
+    }
+  }
+
+  // Draw player
+  drawPlayer();
+}
+
+// --- MAIN LOOP ---
+
+let lastTime = 0;
+function gameLoop(time=0){
+  const dt = (time - lastTime) / 1000;
+  lastTime = time;
+  update(dt);
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+updateInventoryUI();
+gameLoop();
+</script>
+
+</body>
+</html>
