@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Economy MineSell - Sell Per Block</title>
+<style>
+  #moneyDisplay {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    color: #FFD700;
+    font-family: monospace;
+    font-size: 24px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    user-select: none;
+    z-index: 1000;
+  }
+  #inventory {
+    position: fixed;
+    top: 60px;
+    right: 10px;
+    background: rgba(255,255,255,0.9);
+    padding: 10px;
+    border-radius: 8px;
+    font-family: monospace;
+    max-width: 280px;
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: 0 0 8px rgba(0,0,0,0.5);
+    z-index: 1000;
+  }
+  .blockRow {
+    margin-bottom: 8px;
+  }
+  input[type="number"] {
+    width: 50px;
+    margin-left: 8px;
+  }
+  button.sellBtn {
+    margin-left: 8px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 5px;
+  }
+  button.sellBtn:hover {
+    background-color: #45a049;
+  }
+</style>
+</head>
+<body>
+
+<div id="moneyDisplay">Money: €0</div>
+
+<div id="inventory">
+  <h3>Your Inventory</h3>
+  <div id="inventoryList"></div>
+</div>
+
+<script>
+// Voorbeeld inventory - vervang dit met jouw eigen data
+let inventory = {
+  items: {
+    grass: 10,
+    stone: 5,
+    wood: 7,
+    leaves: 4,
+    iron: 3,
+    gold: 1,
+    diamond: 2,
+    coal: 6
+  }
+};
+
+const blockValues = {
+  grass: 1,
+  stone: 2,
+  wood: 3,
+  leaves: 1,
+  iron: 10,
+  gold: 15,
+  diamond: 25,
+  coal: 8,
+};
+
+let money = 0;
+
+// Load geld
+function loadMoney() {
+  const saved = localStorage.getItem('minesellMoney');
+  money = saved ? parseInt(saved) : 0;
+  updateMoneyDisplay();
+}
+
+// Update geld display
+function updateMoneyDisplay() {
+  document.getElementById('moneyDisplay').textContent = 'Money: €' + money;
+}
+
+// Voeg geld toe en sla op
+function addMoney(amount) {
+  money += amount;
+  localStorage.setItem('minesellMoney', money);
+  updateMoneyDisplay();
+}
+
+// Verkoop specifiek aantal blokken
+function sellBlock(block, amount) {
+  amount = parseInt(amount);
+  if (!inventory.items[block]) {
+    alert("You don't have any " + block + "!");
+    return;
+  }
+  if (isNaN(amount) || amount <= 0) {
+    alert("Enter a valid amount to sell.");
+    return;
+  }
+  if (inventory.items[block] < amount) {
+    alert("Not enough " + block + " to sell.");
+    return;
+  }
+  let earned = blockValues[block] * amount;
+  inventory.items[block] -= amount;
+  addMoney(earned);
+  alert(`Sold ${amount} ${block} for €${earned}`);
+  renderInventory();
+}
+
+// Render de inventory lijst
+function renderInventory() {
+  const invDiv = document.getElementById('inventoryList');
+  invDiv.innerHTML = ''; // clear
+  for (let block in inventory.items) {
+    let count = inventory.items[block];
+    if (count > 0) {
+      const row = document.createElement('div');
+      row.className = 'blockRow';
+      row.innerHTML = `
+        <strong>${block}</strong>: ${count} 
+        (Value each: €${blockValues[block] || 0}) 
+        <input type="number" min="1" max="${count}" value="1" id="input-${block}" /> 
+        <button class="sellBtn" onclick="sellBlock('${block}', document.getElementById('input-${block}').value)">Sell</button>
+      `;
+      invDiv.appendChild(row);
+    }
+  }
+}
+
+loadMoney();
+renderInventory();
+</script>
+
+</body>
+</html>
