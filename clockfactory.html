@@ -1,386 +1,236 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Clock Factory Tycoon</title>
   <style>
-    body {
-      margin: 0;
-      display: flex;
-      font-family: sans-serif;
-      background-color: #121212;
-      color: white;
+    body { font-family: sans-serif; display: flex; }
+    #game { display: grid; grid-template-columns: repeat(16, 32px); grid-template-rows: repeat(16, 32px); margin-right: 20px; }
+    .cell { width: 32px; height: 32px; border: 1px solid #ccc; position: relative; }
+    .block, .factory, .sell, .clock {
+      width: 100%; height: 100%; position: absolute; top: 0; left: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 12px;
     }
-    #game {
-      display: grid;
-      grid-template-columns: repeat(16, 40px);
-      grid-template-rows: repeat(16, 40px);
-      gap: 1px;
-      background-color: #333;
-      margin: 20px;
-      position: relative;
-    }
-    .cell {
-      width: 40px;
-      height: 40px;
-      background-color: #1e1e1e;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      border: 1px solid #444;
-      position: relative;
-      user-select: none;
-      cursor: pointer;
-    }
-    .factory {
-      background-color: #4caf50;
-    }
-    .sell {
-      background-color: #2196f3;
-    }
-    .arrow {
-      transform: rotate(0deg);
-      transition: transform 0.2s;
-      font-weight: bold;
-      font-size: 20px;
-    }
-    .clock {
-      width: 20px;
-      height: 20px;
-      background-color: yellow;
-      border-radius: 50%;
-      position: absolute;
-      pointer-events: none;
-      box-shadow: 0 0 5px 2px gold;
-    }
-    .block {
-      background-color: orange;
-      user-select: none;
-      cursor: pointer;
-    }
-    #sidebar {
-      width: 280px;
-      padding: 20px;
-      background-color: #1e1e2f;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      box-sizing: border-box;
-    }
-    button {
-      padding: 10px;
-      background-color: #4caf50;
-      border: none;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: background-color 0.2s;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    .selected {
-      outline: 2px solid yellow;
-      box-sizing: border-box;
-    }
+    .factory { background: #f90; }
+    .sell { background: #0c0; }
+    .clock { background: #09f; border-radius: 50%; }
+    .block { background: #aaa; }
+    #menu { display: flex; flex-direction: column; gap: 5px; }
+    button { padding: 5px; }
   </style>
 </head>
 <body>
   <div id="game"></div>
-  <div id="sidebar">
-    <h2>Shop</h2>
-    <button onclick="buyBlock('+2')">+2 Block (€<span id="costPlus2">100</span>)</button>
-    <button onclick="buyBlock('x2')">x2 Block (€<span id="costX2">200</span>)</button>
-    <button onclick="buyBlock('bocht')">Bocht Rechts (€<span id="costBocht">500</span>)</button>
-    <button onclick="buyBlock('bochtL')">Bocht Links (€<span id="costBochtL">500</span>)</button>
-    <button onclick="upgradeFactory()">Upgrade Factory (€<span id="upgradeCost">250</span>)</button>
-    <p>Money: €<span id="money">0</span></p>
+  <div id="menu">
+    <div>Money: €<span id="money">0</span></div>
+    <button onclick="buyBlock('+2')">Buy +2 (€<span id="costPlus2">50</span>)</button>
+    <button onclick="buyBlock('x2')">Buy x2 (€<span id="costX2">100</span>)</button>
+    <button onclick="buyBlock('bocht')">Buy ↷ (€<span id="costBocht">75</span>)</button>
+    <button onclick="buyBlock('bochtL')">Buy ↶ (€<span id="costBochtL">75</span>)</button>
+    <button onclick="upgradeFactory()">Upgrade Factory (€<span id="upgradeCost">200</span>)</button>
     <button onclick="saveGame()">Save Game</button>
     <button onclick="loadGame()">Load Game</button>
   </div>
-
   <script>
-    const game = document.getElementById("game");
     const size = 16;
-    let grid = [];
-    let clocks = [];
-    let selected = null;
-    let money = 0;
-
-    // Prijzen
-    let costPlus2 = 100;
-    let costX2 = 200;
-    let costBocht = 500;
-    let costBochtL = 500;
-    let factoryUpgradeLevel = 1;
-    let factoryUpgradeCost = 250;
-
+    const grid = [];
     const blocks = [];
+    const clocks = [];
+    const factory = { x: 0, y: 0, rotation: 0 };
+    const sell = { x: 15, y: 15, rotation: 0 };
+    let money = 0;
+    let costPlus2 = 50, costX2 = 100, costBocht = 75, costBochtL = 75;
+    let factoryUpgradeLevel = 0, factoryUpgradeCost = 200;
 
-    const factory = { x: 5, y: 5, type: "factory", rotation: 0 };
-    const sell = { x: 10, y: 10, type: "sell", rotation: 0 };
-
-    // Helper: richting bepalen vanuit rotatie
-    const directionFromRotation = (rotation) => {
-      const deg = ((rotation % 360) + 360) % 360;
-      if (deg === 0) return [1, 0];
-      if (deg === 90) return [0, 1];
-      if (deg === 180) return [-1, 0];
-      if (deg === 270) return [0, -1];
-      return [0, 0];
-    };
-
-    // Grid maken en updaten
     function createGrid() {
+      const game = document.getElementById("game");
       game.innerHTML = "";
-      grid = [];
       for (let y = 0; y < size; y++) {
         grid[y] = [];
         for (let x = 0; x < size; x++) {
           const cell = document.createElement("div");
-          cell.classList.add("cell");
-          cell.dataset.x = x;
-          cell.dataset.y = y;
-
-          if (x === factory.x && y === factory.y) {
-            cell.classList.add("factory");
-            cell.innerHTML = `<span class="arrow">→</span>`;
-            cell.querySelector(".arrow").style.transform = `rotate(${factory.rotation}deg)`;
-            if (selected === factory) cell.classList.add("selected");
-          } else if (x === sell.x && y === sell.y) {
-            cell.classList.add("sell");
-            cell.textContent = "SELL";
-            if (selected === sell) cell.classList.add("selected");
-          } else {
-            const block = blocks.find(b => b.x === x && b.y === y);
-            if (block) {
-              cell.classList.add("block");
-              cell.textContent = block.type;
-              if (selected === block) cell.classList.add("selected");
-            }
-          }
-
-          cell.addEventListener("click", () => {
-            if (selected && selected !== factory && selected !== sell) {
-              // Verplaats geselecteerd blok als klik op lege plek
-              const occupying = blocks.find(b => b.x === x && b.y === y);
-              if (!occupying && !(x === factory.x && y === factory.y) && !(x === sell.x && y === sell.y)) {
-                selected.x = x;
-                selected.y = y;
-                selected = null;
-                createGrid();
-                renderClocks();
-                return;
-              }
-            }
-            // Selecteren
-            if (x === factory.x && y === factory.y) selected = factory;
-            else if (x === sell.x && y === sell.y) selected = sell;
-            else {
-              const block = blocks.find(b => b.x === x && b.y === y);
-              selected = block || null;
-            }
-            createGrid();
-            renderClocks();
-          });
-
+          cell.className = "cell";
           grid[y][x] = cell;
           game.appendChild(cell);
         }
       }
+      renderBlocks();
     }
 
-    // R-toets draait geselecteerde blok/factory/sell
-    document.addEventListener("keydown", (e) => {
-      if (e.key.toLowerCase() === "r" && selected) {
-        selected.rotation = (selected.rotation + 90) % 360;
+    function renderBlocks() {
+      document.querySelectorAll(".block, .factory, .sell").forEach(el => el.remove());
+      for (const { x, y, type, rotation } of blocks) {
+        const el = document.createElement("div");
+        el.className = "block";
+        el.textContent = type;
+        el.style.transform = `rotate(${rotation * 90}deg)`;
+        grid[y][x].appendChild(el);
+      }
+
+      const f = document.createElement("div");
+      f.className = "factory";
+      f.textContent = "F";
+      f.style.transform = `rotate(${factory.rotation * 90}deg)`;
+      grid[factory.y][factory.x].appendChild(f);
+
+      const s = document.createElement("div");
+      s.className = "sell";
+      s.textContent = "S";
+      grid[sell.y][sell.x].appendChild(s);
+    }
+
+    document.addEventListener("keydown", e => {
+      const selected = blocks.find(b => b.selected);
+      if (e.key === "r") {
+        if (selected) selected.rotation = (selected.rotation + 1) % 4;
+        else factory.rotation = (factory.rotation + 1) % 4;
         createGrid();
-        renderClocks();
       }
     });
 
-    // Spawnt elke seconde een klok met waarde gelijk aan factoryUpgradeLevel
-    function spawnClock() {
-      const [dx, dy] = directionFromRotation(factory.rotation);
-      const cx = factory.x + dx;
-      const cy = factory.y + dy;
+    document.getElementById("game").addEventListener("click", e => {
+      const cell = e.target.closest(".cell");
+      if (!cell) return;
+      const x = [...cell.parentNode.children].indexOf(cell) % size;
+      const y = Math.floor([...cell.parentNode.children].indexOf(cell) / size);
+      for (const b of blocks) b.selected = false;
+      const block = blocks.find(b => b.x === x && b.y === y);
+      if (block) block.selected = true;
+    });
 
-      if (cx >= 0 && cx < size && cy >= 0 && cy < size) {
-        // Check dat er geen klok al is op die plek
-        if (!clocks.find(c => c.x === cx && c.y === cy)) {
-          clocks.push({ x: cx, y: cy, dx, dy, value: factoryUpgradeLevel });
-        }
-      }
+    function spawnClock() {
+      clocks.push({
+        x: factory.x,
+        y: factory.y,
+        dx: [1, 0, -1, 0][factory.rotation],
+        dy: [0, 1, 0, -1][factory.rotation],
+        value: 1 + factoryUpgradeLevel
+      });
     }
 
-    // Update klokken positie en waarde volgens blokken en bochten
     function updateClocks() {
       for (let i = clocks.length - 1; i >= 0; i--) {
         const clock = clocks[i];
-
-        // Check of klok over een blok beweegt
         const block = blocks.find(b => b.x === clock.x && b.y === clock.y);
         if (block) {
           if (block.type === "+2") clock.value += 2;
           else if (block.type === "x2") clock.value *= 2;
-          else if (block.type === "bocht" || block.type === "bochtL") {
-            const [dx, dy] = [clock.dx, clock.dy];
-            if (block.type === "bocht") {
-              // Bocht rechts
-              if (dx === 1 && dy === 0) [clock.dx, clock.dy] = [0, 1];
-              else if (dx === 0 && dy === 1) [clock.dx, clock.dy] = [-1, 0];
-              else if (dx === -1 && dy === 0) [clock.dx, clock.dy] = [0, -1];
-              else if (dx === 0 && dy === -1) [clock.dx, clock.dy] = [1, 0];
-            } else if (block.type === "bochtL") {
-              // Bocht links
-              if (dx === 1 && dy === 0) [clock.dx, clock.dy] = [0, -1];
-              else if (dx === 0 && dy === -1) [clock.dx, clock.dy] = [-1, 0];
-              else if (dx === -1 && dy === 0) [clock.dx, clock.dy] = [0, 1];
-              else if (dx === 0 && dy === 1) [clock.dx, clock.dy] = [
-    clock.x += clock.dx;
-    clock.y += clock.dy;
+          else if (block.type === "bocht") {
+            clock.dx = -clock.dy;
+            clock.dy = clock.dx;
+          } else if (block.type === "bochtL") {
+            clock.dx = clock.dy;
+            clock.dy = -clock.dx;
+          }
+        }
+        clock.x += clock.dx;
+        clock.y += clock.dy;
 
-    // Check sell
-    if (clock.x === sell.x && clock.y === sell.y) {
-      money += clock.value;
-      updateMoneyDisplay();
-      clocks.splice(i, 1);
-    }
+        if (clock.x === sell.x && clock.y === sell.y) {
+          money += clock.value;
+          clocks.splice(i, 1);
+          updateMoneyDisplay();
+        }
 
-    // Verwijder buiten het grid
-    if (clock.x < 0 || clock.x >= size || clock.y < 0 || clock.y >= size) {
-      clocks.splice(i, 1);
-    }
-  }
-}
-
-function renderClocks() {
-  document.querySelectorAll(".clock").forEach(el => el.remove());
-  for (const clock of clocks) {
-    const el = document.createElement("div");
-    el.className = "clock";
-    const cell = grid[clock.y]?.[clock.x];
-    if (cell) {
-      cell.appendChild(el);
-    }
-  }
-}
-
-function updateMoneyDisplay() {
-  document.getElementById("money").textContent = money;
-}
-
-function buyBlock(type) {
-  let cost = 0;
-  if (type === "+2") cost = costPlus2;
-  else if (type === "x2") cost = costX2;
-  else if (type === "bocht") cost = costBocht;
-  else if (type === "bochtL") cost = costBochtL;
-
-  if (money >= cost) {
-    money -= cost;
-    updateMoneyDisplay();
-
-    let placeX = 0, placeY = 0;
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        if (
-          !blocks.find(b => b.x === x && b.y === y) &&
-          !(x === factory.x && y === factory.y) &&
-          !(x === sell.x && y === sell.y)
-        ) {
-          placeX = x;
-          placeY = y;
-          y = size;
-          break;
+        if (clock.x < 0 || clock.y < 0 || clock.x >= size || clock.y >= size) {
+          clocks.splice(i, 1);
         }
       }
     }
-    blocks.push({ x: placeX, y: placeY, type, rotation: 0 });
 
-    // Prijs verhogen
-    if (type === "+2") {
-      costPlus2 = Math.floor(costPlus2 * 1.15);
+    function renderClocks() {
+      document.querySelectorAll(".clock").forEach(el => el.remove());
+      for (const clock of clocks) {
+        const el = document.createElement("div");
+        el.className = "clock";
+        const cell = grid[clock.y]?.[clock.x];
+        if (cell) cell.appendChild(el);
+      }
+    }
+
+    function updateMoneyDisplay() {
+      document.getElementById("money").textContent = money;
+    }
+
+    function buyBlock(type) {
+      let cost = { "+2": costPlus2, "x2": costX2, "bocht": costBocht, "bochtL": costBochtL }[type];
+      if (money < cost) return alert("Not enough money!");
+      money -= cost;
+      updateMoneyDisplay();
+
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (
+            !blocks.some(b => b.x === x && b.y === y) &&
+            !(x === factory.x && y === factory.y) &&
+            !(x === sell.x && y === sell.y)
+          ) {
+            blocks.push({ x, y, type, rotation: 0 });
+            if (type === "+2") {
+              costPlus2 = Math.floor(costPlus2 * 1.15);
+              document.getElementById("costPlus2").textContent = costPlus2;
+            } else if (type === "x2") {
+              costX2 = Math.floor(costX2 * 1.15);
+              document.getElementById("costX2").textContent = costX2;
+            } else if (type === "bocht") {
+              costBocht = Math.floor(costBocht * 1.15);
+              document.getElementById("costBocht").textContent = costBocht;
+            } else if (type === "bochtL") {
+              costBochtL = Math.floor(costBochtL * 1.15);
+              document.getElementById("costBochtL").textContent = costBochtL;
+            }
+            createGrid();
+            return;
+          }
+        }
+      }
+    }
+
+    function upgradeFactory() {
+      if (money < factoryUpgradeCost) return alert("Not enough money!");
+      money -= factoryUpgradeCost;
+      factoryUpgradeLevel++;
+      factoryUpgradeCost = Math.floor(factoryUpgradeCost * 1.5);
+      updateMoneyDisplay();
+      document.getElementById("upgradeCost").textContent = factoryUpgradeCost;
+    }
+
+    function saveGame() {
+      const data = {
+        money, blocks, factory, sell,
+        costPlus2, costX2, costBocht, costBochtL,
+        factoryUpgradeLevel, factoryUpgradeCost
+      };
+      localStorage.setItem("clockFactorySave", JSON.stringify(data));
+      alert("Game saved!");
+    }
+
+    function loadGame() {
+      const data = JSON.parse(localStorage.getItem("clockFactorySave"));
+      if (!data) return alert("No save found!");
+      money = data.money;
+      blocks.length = 0; blocks.push(...data.blocks);
+      Object.assign(factory, data.factory);
+      Object.assign(sell, data.sell);
+      costPlus2 = data.costPlus2; costX2 = data.costX2;
+      costBocht = data.costBocht; costBochtL = data.costBochtL;
+      factoryUpgradeLevel = data.factoryUpgradeLevel;
+      factoryUpgradeCost = data.factoryUpgradeCost;
+      updateMoneyDisplay();
       document.getElementById("costPlus2").textContent = costPlus2;
-    } else if (type === "x2") {
-      costX2 = Math.floor(costX2 * 1.15);
       document.getElementById("costX2").textContent = costX2;
-    } else if (type === "bocht") {
-      costBocht = Math.floor(costBocht * 1.15);
       document.getElementById("costBocht").textContent = costBocht;
-    } else if (type === "bochtL") {
-      costBochtL = Math.floor(costBochtL * 1.15);
       document.getElementById("costBochtL").textContent = costBochtL;
+      document.getElementById("upgradeCost").textContent = factoryUpgradeCost;
+      createGrid();
     }
 
     createGrid();
-  } else {
-    alert("Not enough money!");
-  }
-}
-
-function upgradeFactory() {
-  if (money >= factoryUpgradeCost) {
-    money -= factoryUpgradeCost;
-    factoryUpgradeLevel++;
-    factoryUpgradeCost = Math.floor(factoryUpgradeCost * 1.5);
-    updateMoneyDisplay();
-    document.getElementById("upgradeCost").textContent = factoryUpgradeCost;
-  } else {
-    alert("Not enough money for upgrade!");
-  }
-}
-
-function saveGame() {
-  const data = {
-    money,
-    blocks,
-    factory,
-    sell,
-    costPlus2,
-    costX2,
-    costBocht,
-    costBochtL,
-    factoryUpgradeLevel,
-    factoryUpgradeCost,
-  };
-  localStorage.setItem("clockFactorySave", JSON.stringify(data));
-  alert("Game saved!");
-}
-
-function loadGame() {
-  const data = JSON.parse(localStorage.getItem("clockFactorySave"));
-  if (!data) return alert("No save found.");
-  money = data.money;
-  blocks.length = 0;
-  blocks.push(...data.blocks);
-  factory.x = data.factory.x;
-  factory.y = data.factory.y;
-  factory.rotation = data.factory.rotation;
-  sell.x = data.sell.x;
-  sell.y = data.sell.y;
-  sell.rotation = data.sell.rotation;
-  costPlus2 = data.costPlus2;
-  costX2 = data.costX2;
-  costBocht = data.costBocht;
-  costBochtL = data.costBochtL;
-  factoryUpgradeLevel = data.factoryUpgradeLevel;
-  factoryUpgradeCost = data.factoryUpgradeCost;
-  updateMoneyDisplay();
-  document.getElementById("costPlus2").textContent = costPlus2;
-  document.getElementById("costX2").textContent = costX2;
-  document.getElementById("costBocht").textContent = costBocht;
-  document.getElementById("costBochtL").textContent = costBochtL;
-  document.getElementById("upgradeCost").textContent = factoryUpgradeCost;
-  createGrid();
-}
-
-setInterval(() => {
-  spawnClock();
-  updateClocks();
-  renderClocks();
-}, 1000);
-
-createGrid();
+    setInterval(() => {
+      spawnClock();
+      updateClocks();
+      renderClocks();
+    }, 1000);
+  </script>
+</body>
+</html>
