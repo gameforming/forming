@@ -37,6 +37,11 @@
     const factories = [];
     const clocks = [];
 
+    // Start met een factory en sell platform
+    grid[7][5] = 'factory';
+    factories.push({ x: 5, y: 7 });
+    grid[7][10] = 'sell';
+
     function selectBlock(type) {
       selectedBlock = type;
     }
