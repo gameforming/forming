@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MineSell 2D Minecraft</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    font-family: monospace, monospace;
+  }
+  #gameCanvas {
+    background: #87ceeb; /* sky blue */
+    display: block;
+    margin: 0 auto;
+    border: 2px solid #444;
+  }
+  #moneyDisplay {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    color: #FFD700;
+    font-size: 24px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    user-select: none;
+    z-index: 1000;
+  }
+  #inventory {
+    position: fixed;
+    top: 60px;
+    right: 10px;
+    background: rgba(255,255,255,0.9);
+    padding: 10px;
+    border-radius: 8px;
+    max-width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: 0 0 8px rgba(0,0,0,0.5);
+    z-index: 1000;
+  }
+  #backBtn {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background-color: #ff5555;
+    border: none;
+    padding: 8px 16px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 8px;
+    user-select: none;
+    z-index: 1000;
+  }
+  #backBtn:hover {
+    background-color: #ff2222;
+  }
+  .blockRow {
+    margin-bottom: 8px;
+  }
+  input[type="number"] {
+    width: 50px;
+    margin-left: 8px;
+  }
+  button.sellBtn {
+    margin-left: 8px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 5px;
+  }
+  button.sellBtn:hover {
+    background-color: #45a049;
+  }
+</style>
+</head>
+<body>
+
+<button id="backBtn">Back to Index</button>
+<div id="moneyDisplay">Money: €0</div>
+<div id="inventory">
+  <h3>Your Inventory</h3>
+  <div id="inventoryList"></div>
+</div>
+<canvas id="gameCanvas" width="640" height="480"></canvas>
+
+<script>
+/* ----------- Variables ----------- */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const blockSize = 32;
+const viewWidthBlocks = Math.floor(canvas.width / blockSize);
+const viewHeightBlocks = Math.floor(canvas.height / blockSize);
+
+const blockTypes = ['grass', 'stone', 'wood', 'leaves', 'coal', 'iron', 'gold', 'diamond'];
+
+const blockColors = {
+  grass: '#4CAF50',
+  stone: '#999999',
+  wood: '#8B5A2B',
+  leaves: '#2E8B57',
+  coal: '#222222',
+  iron: '#D8D8D8',
+  gold: '#FFD700',
+  diamond: '#00FFFF'
+};
+
+const blockValues = {
+  grass: 1,
+  stone: 2,
+  wood: 3,
+  leaves: 1,
+  coal: 8,
+  iron: 10,
+  gold: 15,
+  diamond: 25,
+};
+
+// World data, 2D array keyed by x,y
+// We’ll generate on the fly with simple noise and randomness
+let worldData = {};
+
+// Player position in blocks (floats for smooth movement)
+let player = {
+  x: 0,
+  y: 0,  // bottom of player (feet)
+  width: 1, // 1 block wide
+  height: 2, // 2 blocks tall
+  vy: 0, // vertical speed for jumping/gravity
+  onGround: false,
+};
+
+// Inventory (block counts)
+let inventory = {
+  items: {
+    grass: 0,
+    stone: 0,
+    wood: 0,
+    leaves: 0,
+    coal: 0,
+    iron: 0,
+    gold: 0,
+    diamond: 0
+  }
+};
+
+let money = 0;
+
+/* ----------- World Generation ----------- */
+// Simple deterministic pseudo random per coordinate for ore distribution
+function noise(x, y) {
+  let n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+  return n - Math.floor(n);
+}
+
+// Generate block at given coordinate if not exists
+function generateBlock(x, y) {
+  const groundHeight = 10; // y=10 is ground level, higher y is down (like Minecraft)
+  if (y > groundHeight) return 'stone';
+  if (y === groundHeight) return 'grass';
+  if (y === groundHeight - 1) {
+    // tree base on some spots
+    if (noise(x, y) > 0.85) return 'wood';
+    if (noise(x, y + 1) > 0.75) return 'leaves';
+    return 'air';
+  }
+  if (y < groundHeight - 1) {
+    // ores below ground, rare in order diamond < gold < iron < coal < stone
+    let r = noise(x, y);
+    if (r > 0.995) return 'diamond';
+    if (r > 0.98) return 'gold';
+    if (r > 0.9) return 'iron';
+    if (r > 0.8) return 'coal';
+    return 'stone';
+  }
+  return 'air';
+}
+
+function getBlock(x, y) {
+  let key = `${x},${y}`;
+  if (!(key in worldData)) {
+    worldData[key] = generateBlock(x, y);
+  }
+  return worldData[key];
+}
+
+function setBlock(x, y, block) {
+  let key = `${x},${y}`;
+  worldData[key] = block;
+}
+
+/* ----------- Player Movement & Physics ----------- */
+const gravity = 0.3;
+const jumpStrength = -7;
+
+let keysDown = {};
+document.addEventListener('keydown', e => {
+  keysDown[e.key.toLowerCase()] = true;
+});
+document.addEventListener('keyup', e => {
+  keysDown[e.key.toLowerCase()] = false;
+});
+
+// Collision detection helper
+function isSolid(block) {
+  return block !== 'air' && block !== 'leaves';
+}
+
+// Player rectangle helper
+function getPlayerRect(x, y) {
+  return {
+    left: x,
+    right: x + player.width,
+    top: y - player.height,
+    bottom: y,
+  };
+}
+
+function collidesAt(x, y) {
+  // Check all blocks player would occupy for solidity
+  let rect = getPlayerRect(x, y);
+  for (let bx = Math.floor(rect.left); bx < Math.ceil(rect.right); bx++) {
+    for (let by = Math.floor(rect.top); by < Math.ceil(rect.bottom); by++) {
+      if (isSolid(getBlock(bx, by))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function updatePlayer() {
+  // Horizontal movement
+  let speed = 0.15;
+  if (keysDown['a']) {
+    let newX = player.x - speed;
+    if (!collidesAt(newX, player.y)) player.x = newX;
+  }
+  if (keysDown['d']) {
+    let newX = player.x + speed;
+    if (!collidesAt(newX, player.y)) player.x = newX;
+  }
+
+  // Gravity + jumping
+  player.vy += gravity;
+  let newY = player.y + player.vy;
+
+  if (collidesAt(player.x, newY)) {
+    // Hit ground or block
+    if (player.vy > 0) {
+      // Falling down hits ground
+      player.onGround = true;
+      player.vy = 0;
+      player.y = Math.floor(player.y);
+    } else {
+      // Hitting block above
+      player.vy = 0;
+    }
+  } else {
+    player.y = newY;
+    player.onGround = false;
+  }
+
+  // Jump key
+  if (keysDown['w'] || keysDown[' ']) {
+    if (player.onGround) {
+      player.vy = jumpStrength;
+      player.onGround = false;
+    }
+  }
+}
+
+/* ----------- Camera and Drawing ----------- */
+function drawBlock(x, y, block, offsetX, offsetY) {
+  if (block === 'air') return;
+  ctx.fillStyle = blockColors[block] || '#000';
+  ctx.fillRect(
+    (x - offsetX) * blockSize,
+    (y - offsetY) * blockSize,
+    blockSize,
+    blockSize
+  );
+  // Optional: draw block border
+  ctx.strokeStyle = '#222';
+  ctx.strokeRect(
+    (x - offsetX) * blockSize,
+    (y - offsetY) * blockSize,
+    blockSize,
+    blockSize
+  );
+}
+
+function drawPlayer(offsetX, offsetY) {
+  ctx.fillStyle = 'red';
+  ctx.fillRect(
+    (player.x - offsetX) * blockSize,
+    (player.y - offsetY - player.height) * blockSize,
+    player.width * blockSize,
+    player.height * blockSize
+  );
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Camera follows player horizontally and vertically, center player
+  let camX = player.x - viewWidthBlocks / 2 + player.width / 2;
+  let camY = player.y - viewHeightBlocks / 2 + player.height / 2;
+
+  // Draw visible blocks
+  for (let x = Math.floor(camX); x < Math.ceil(camX + viewWidthBlocks); x++) {
+    for (let y = Math.floor(camY); y < Math.ceil(camY + viewHeightBlocks); y++) {
+      let b = getBlock(x, y);
+      drawBlock(x, y, b, camX, camY);
+    }
+  }
+
+  // Draw player
+  drawPlayer(camX, camY);
+}
+
+/* ----------- Inventory & Block Interaction ----------- */
+
+// Inventory display & economy sell system (from previous example)
+function updateMoneyDisplay() {
+  document.getElementById('moneyDisplay').textContent = 'Money: €' + money;
+}
+
+function addMoney(amount) {
+  money += amount;
+  localStorage.setItem('minesellMoney', money);
+  updateMoneyDisplay();
+}
+
+function loadMoney() {
+  const saved = localStorage.getItem('minesellMoney');
+  money = saved ? parseInt(saved) : 0;
+  updateMoneyDisplay();
+}
+
+function renderInventory() {
+  const invDiv = document.getElementById('inventoryList');
+  invDiv.innerHTML = '';
+  for (let block in inventory.items) {
+    let count = inventory.items[block];
+    if (count > 0) {
+      const row = document.createElement('div');
+      row.className = 'blockRow';
+      row.innerHTML = `
+        <strong>${block}</strong>: ${count} 
+        (Value each: €${blockValues[block] || 0}) 
+        <input type="number" min="1" max="${count}" value="1" id="input-${block}" /> 
+        <button class="sellBtn" onclick="sellBlock('${block}', document.getElementById('input-${block}').value)">Sell</button>
+      `;
+      invDiv.appendChild(row);
+    }
+  }
+}
+
+function sellBlock(block, amount) {
+  amount = parseInt(amount);
+  if (!inventory.items[block]) {
+    alert("You don't have any " + block + "!");
+    return;
+  }
+  if (isNaN(amount) || amount <= 0) {
+    alert("Enter a valid amount to sell.");
+    return;
+  }
+  if (inventory.items[block] < amount) {
+    alert("Not enough " + block + " to sell.");
+    return;
+  }
+  let earned = blockValues[block] * amount;
+  inventory.items[block] -= amount;
+  addMoney(earned);
+  alert(`Sold ${amount} ${block} for €${earned}`);
+  renderInventory();
+}
+
+/* ----------- Block Breaking / Placing ----------- */
+
+// Break block under mouse click and add to inventory
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  let camX = player.x - viewWidthBlocks / 2 + player.width / 2;
+  let camY = player.y - viewHeightBlocks / 2 + player.height / 2;
+
+  let blockX = Math.floor(mouseX / blockSize + camX);
+  let blockY = Math.floor(mouseY / blockSize + camY);
+
+  let block = getBlock(blockX, blockY);
+  if (block === 'air') return; // nothing to break
+
+  // Add block to inventory (except air)
+  if (block !== 'air') {
+    inventory.items[block] = (inventory.items[block] || 0) + 1;
+  }
+  setBlock(blockX, blockY, 'air');
+  renderInventory();
+});
+
+/* ----------- Back button ----------- */
+document.getElementById('backBtn').addEventListener('click', () => {
+  window.location.href = 'index.html';
+});
+
+/* ----------- Main Loop ----------- */
+function gameLoop() {
+  updatePlayer();
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// Init
+loadMoney();
+renderInventory();
+gameLoop();
+</script>
+
+</body>
+</html>
