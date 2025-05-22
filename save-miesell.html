@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Save System - MineSell</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #222; color: #eee; padding: 20px; }
+  button { margin: 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+  #status { margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h2>MineSell Save & Load System</h2>
+
+<button id="saveBtn">Save Game</button>
+<button id="loadBtn">Load Game</button>
+<button id="clearBtn">Clear Save</button>
+
+<div id="status"></div>
+
+<script>
+// --- Dummy data to simulate game state ---
+let inventory = {
+  items: {
+    grass: 5,
+    stone: 3,
+    wood: 10,
+  }
+};
+
+let world = {
+  modifiedBlocks: {
+    "0,0": "stone",
+    "1,0": "grass",
+    "2,3": "diamond",
+  }
+};
+
+let offsetX = 0;
+let offsetY = 0;
+
+// --- Save function ---
+function saveGame(){
+  const saveData = {
+    inventory: inventory.items,
+    worldModifiedBlocks: world.modifiedBlocks,
+    offsetX,
+    offsetY
+  };
+  localStorage.setItem("minesellSave", JSON.stringify(saveData));
+  showStatus("Game saved successfully!");
+}
+
+// --- Load function ---
+function loadGame(){
+  const saved = localStorage.getItem("minesellSave");
+  if(saved){
+    const data = JSON.parse(saved);
+    inventory.items = data.inventory || {};
+    world.modifiedBlocks = data.worldModifiedBlocks || {};
+    offsetX = data.offsetX || 0;
+    offsetY = data.offsetY || 0;
+    showStatus("Game loaded successfully!");
+    console.log("Loaded inventory:", inventory);
+    console.log("Loaded world blocks:", world.modifiedBlocks);
+    console.log("Loaded offsets:", offsetX, offsetY);
+  } else {
+    showStatus("No saved game found.");
+  }
+}
+
+// --- Clear save ---
+function clearSave(){
+  localStorage.removeItem("minesellSave");
+  showStatus("Save data cleared.");
+}
+
+// --- UI helpers ---
+const statusDiv = document.getElementById("status");
+function showStatus(text){
+  statusDiv.textContent = text;
+}
+
+// --- Button events ---
+document.getElementById("saveBtn").onclick = saveGame;
+document.getElementById("loadBtn").onclick = loadGame;
+document.getElementById("clearBtn").onclick = clearSave;
+
+</script>
+
+</body>
+</html>
