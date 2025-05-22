@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Minesell 2D Minecraft - Demo</title>
+<title>Minesell 2D Minecraft - Breken en Plaatsen</title>
 <style>
   body {
     margin: 0; background: #87ceeb; overflow: hidden; font-family: sans-serif;
@@ -24,7 +24,7 @@
     margin-top: 0;
   }
   .item-slot {
-    width: 40px; height: 40px;
+    width: 70px; height: 40px;
     border: 1px solid white;
     display: inline-block;
     margin: 5px;
@@ -33,6 +33,7 @@
     line-height: 40px;
     font-weight: bold;
     user-select: none;
+    cursor: default;
   }
 </style>
 </head>
@@ -53,19 +54,17 @@ const tileSize = 32;
 const worldWidth = 50;
 const worldHeight = 20;
 
-// Define block types and colors
 const BLOCKS = {
   air: {color: '#87ceeb', walkable: true},
   grass: {color: '#00cc00', walkable: false},
   stone: {color: '#888888', walkable: false},
-  wood: {color: '#8b4513', walkable: true}, // player can pass wood
+  wood: {color: '#8b4513', walkable: true},
   leaves: {color: '#228B22', walkable: true},
   iron: {color: '#d8d8d8', walkable: false},
   gold: {color: '#ffd700', walkable: false},
   diamond: {color: '#00ffff', walkable: false}
 };
 
-// Simple world 2D array: generate ground + random trees + ores
 let world = [];
 
 function generateWorld() {
@@ -73,25 +72,21 @@ function generateWorld() {
     world[y] = [];
     for(let x = 0; x < worldWidth; x++) {
       if(y === worldHeight - 1) {
-        world[y][x] = 'stone'; // bottom layer stone
-      } else if (y >= worldHeight - 5) {
-        world[y][x] = 'dirt'; // dirt under grass (optional)
-      } else if(y === worldHeight - 6){
+        world[y][x] = 'stone';
+      } else if (y === worldHeight - 2){
         world[y][x] = 'grass';
       } else {
         world[y][x] = 'air';
       }
     }
   }
-  // Create simple trees randomly on grass
+  // Simple tree
   for(let x = 2; x < worldWidth-2; x+=5) {
     let groundY = findSurfaceY(x);
     if(groundY > 0){
-      // Tree trunk (wood) 3 blocks high
       for(let h = 1; h <= 3; h++) {
         world[groundY - h][x] = 'wood';
       }
-      // Leaves around top trunk
       let leafY = groundY - 4;
       for(let lx = x-1; lx <= x+1; lx++){
         for(let ly = leafY; ly <= leafY+1; ly++){
@@ -102,30 +97,8 @@ function generateWorld() {
       }
     }
   }
-  
-  // Place ores randomly underground
-  for(let i=0; i<30; i++) {
-    let x = Math.floor(Math.random() * worldWidth);
-    let y = Math.floor(worldHeight/2 + Math.random()* (worldHeight/2 - 2));
-    const ores = ['diamond', 'gold', 'iron'];
-    const rarityWeights = [0.1, 0.3, 0.6]; // rarities diamond rarest
-    let ore = pickWeighted(ores, rarityWeights);
-    world[y][x] = ore;
-  }
 }
 
-// Helper weighted random picker
-function pickWeighted(items, weights) {
-  let total = weights.reduce((a,b) => a+b, 0);
-  let r = Math.random() * total;
-  for(let i=0; i<items.length; i++) {
-    if(r < weights[i]) return items[i];
-    r -= weights[i];
-  }
-  return items[items.length-1];
-}
-
-// Find surface Y coordinate for given x
 function findSurfaceY(x) {
   for(let y = 0; y < worldHeight; y++) {
     if(world[y][x] !== 'air') return y - 1;
@@ -133,7 +106,6 @@ function findSurfaceY(x) {
   return worldHeight - 1;
 }
 
-// Player object
 let player = {
   x: 5 * tileSize,
   y: 0,
@@ -145,19 +117,14 @@ let player = {
   jumping: false,
   onGround: false
 };
-
 player.y = findSurfaceY(Math.floor(player.x / tileSize)) * tileSize;
 
-// Inventory object: holds block counts
 let inventory = {};
-
 let inventoryOpen = false;
 
-// Controls
 const keys = {};
 document.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
-  // Inventory toggle on 'e'
   if(e.key.toLowerCase() === 'e'){
     inventoryOpen = !inventoryOpen;
     document.getElementById('inventory').style.display = inventoryOpen ? 'block' : 'none';
@@ -168,11 +135,35 @@ document.addEventListener('keyup', e => {
   keys[e.key.toLowerCase()] = false;
 });
 
-// Physics variables
 const gravity = 0.5;
 const jumpPower = -10;
 
-// Game loop
+let mouseDownLeft = false;
+let mouseDownRight = false;
+
+// Track mouse position relative to world (account for camera offset)
+let mouseX = 0;
+let mouseY = 0;
+
+canvas.addEventListener('mousedown', (e) => {
+  if(e.button === 0) mouseDownLeft = true;
+  if(e.button === 2) mouseDownRight = true;
+});
+
+canvas.addEventListener('mouseup', (e) => {
+  if(e.button === 0) mouseDownLeft = false;
+  if(e.button === 2) mouseDownRight = false;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = e.clientX - rect.left;
+  mouseY = e.clientY - rect.top;
+});
+
+// Disable context menu on right click on canvas so we can use right click for placing
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
 function gameLoop(){
   update();
   draw();
@@ -180,12 +171,10 @@ function gameLoop(){
 }
 
 function update(){
-  // Horizontal movement
   player.dx = 0;
   if(keys['a']) player.dx = -player.speed;
   if(keys['d']) player.dx = player.speed;
 
-  // Apply horizontal movement with collision
   if(player.dx !== 0){
     let newX = player.x + player.dx;
     if(!collides(newX, player.y)){
@@ -193,7 +182,6 @@ function update(){
     }
   }
 
-  // Jumping
   if(keys['w'] || keys[' ']){
     if(player.onGround && !player.jumping){
       player.dy = jumpPower;
@@ -202,12 +190,10 @@ function update(){
     }
   }
 
-  // Gravity
   player.dy += gravity;
   let newY = player.y + player.dy;
 
-  // Vertical collision check
-  if(player.dy > 0){ // falling
+  if(player.dy > 0){ 
     if(!collides(player.x, newY + player.height)){
       player.y = newY;
       player.onGround = false;
@@ -217,7 +203,7 @@ function update(){
       player.onGround = true;
       player.jumping = false;
     }
-  } else if(player.dy < 0){ // going up
+  } else if(player.dy < 0){
     if(!collides(player.x, newY)){
       player.y = newY;
     } else {
@@ -225,74 +211,146 @@ function update(){
     }
   }
 
-  // Keep player in bounds horizontally
   if(player.x < 0) player.x = 0;
   if(player.x > (worldWidth * tileSize) - player.width) player.x = (worldWidth * tileSize) - player.width;
+
+  // Breken en plaatsen, alleen als inventory gesloten is
+  if(!inventoryOpen){
+    let offsetX = player.x - canvas.width/2 + player.width/2;
+    if(offsetX < 0) offsetX = 0;
+    if(offsetX > worldWidth * tileSize - canvas.width) offsetX = worldWidth * tileSize - canvas.width;
+
+    // Mouse position in world coordinates
+    let worldMouseX = Math.floor((mouseX + offsetX) / tileSize);
+    let worldMouseY = Math.floor(mouseY / tileSize);
+
+    // Break block (left mouse down)
+    if(mouseDownLeft){
+      if(worldMouseX >= 0 && worldMouseX < worldWidth && worldMouseY >= 0 && worldMouseY < worldHeight){
+        let block = world[worldMouseY][worldMouseX];
+        if(block !== 'air'){
+          addToInventory(block);
+          world[worldMouseY][worldMouseX] = 'air';
+          mouseDownLeft = false; // prevent breaking multiple times per click
+          updateInventoryDisplay();
+        }
+      }
+    }
+
+    // Place block (right mouse down)
+    if(mouseDownRight){
+      if(worldMouseX >= 0 && worldMouseX < worldWidth && worldMouseY >= 0 && worldMouseY < worldHeight){
+        let targetBlock = world[worldMouseY][worldMouseX];
+        if(targetBlock === 'air'){
+          // Find first block in inventory to place
+          let blockToPlace = getFirstInventoryBlock();
+          if(blockToPlace){
+            world[worldMouseY][worldMouseX] = blockToPlace;
+            removeFromInventory(blockToPlace);
+            mouseDownRight = false; // prevent placing multiple times per click
+            updateInventoryDisplay();
+          }
+        }
+      }
+    }
+  }
 }
 
-function collides(x, y){
-  // Check collision of player's bottom-left and bottom-right corners with non-walkable blocks
-  let leftBlockX = Math.floor(x / tileSize);
-  let rightBlockX = Math.floor((x + player.width - 1) / tileSize);
-  let blockY = Math.floor(y / tileSize);
+function collides(x, y) {
+  // y = bottom of player or top
+  let leftTile = Math.floor(x / tileSize);
+  let rightTile = Math.floor((x + player.width - 1) / tileSize);
+  let topTile = Math.floor(y / tileSize);
+  let bottomTile = Math.floor((y + player.height - 1) / tileSize);
 
-  // If out of world bounds vertically, consider solid ground at bottom
-  if(blockY >= worldHeight) return true;
-  if(blockY < 0) return false;
-
-  // Check left block collision
-  if(!BLOCKS[world[blockY][leftBlockX]].walkable) return true;
-  // Check right block collision
-  if(!BLOCKS[world[blockY][rightBlockX]].walkable) return true;
-
+  // Check all tiles player occupies vertically
+  for(let tx = leftTile; tx <= rightTile; tx++){
+    for(let ty = topTile; ty <= bottomTile; ty++){
+      if(ty < 0 || tx < 0 || tx >= worldWidth || ty >= worldHeight) return true;
+      if(world[ty][tx] !== 'air'){
+        return true;
+      }
+    }
+  }
   return false;
 }
 
 function draw(){
-  // Clear
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // Calculate offset so player is centered horizontally
+  // Camera offset: center on player horizontally
   let offsetX = player.x - canvas.width/2 + player.width/2;
   if(offsetX < 0) offsetX = 0;
   if(offsetX > worldWidth * tileSize - canvas.width) offsetX = worldWidth * tileSize - canvas.width;
 
   // Draw world
-  for(let y=0; y<worldHeight; y++){
-    for(let x=0; x<worldWidth; x++){
+  for(let y = 0; y < worldHeight; y++){
+    for(let x = 0; x < worldWidth; x++){
       let block = world[y][x];
-      let color = BLOCKS[block]?.color || '#000';
+      let color = BLOCKS[block]?.color || '#000000';
       ctx.fillStyle = color;
-      let drawX = x*tileSize - offsetX;
-      let drawY = y*tileSize;
-      if(drawX + tileSize >= 0 && drawX <= canvas.width){
-        ctx.fillRect(drawX, drawY, tileSize, tileSize);
-        // Optionally draw block borders
-        ctx.strokeStyle = '#444';
-        ctx.strokeRect(drawX, drawY, tileSize, tileSize);
+      ctx.fillRect(x*tileSize - offsetX, y*tileSize, tileSize, tileSize);
+      // Draw block outlines
+      if(block !== 'air'){
+        ctx.strokeStyle = 'black';
+        ctx.strokeRect(x*tileSize - offsetX, y*tileSize, tileSize, tileSize);
       }
     }
   }
 
   // Draw player
   ctx.fillStyle = 'red';
-  let playerDrawX = player.x - offsetX;
-  ctx.fillRect(playerDrawX, player.y, player.width, player.height);
-}
+  ctx.fillRect(player.x - offsetX, player.y, player.width, player.height);
 
-// Inventory functions
-function updateInventoryDisplay(){
-  const container = document.getElementById('inventorySlots');
-  container.innerHTML = '';
-  for(let block in inventory){
-    let slot = document.createElement('div');
-    slot.className = 'item-slot';
-    slot.textContent = `${block}: ${inventory[block]}`;
-    container.appendChild(slot);
+  // Draw block highlight under mouse if inventory closed
+  if(!inventoryOpen){
+    let tileX = Math.floor((mouseX + offsetX) / tileSize);
+    let tileY = Math.floor(mouseY / tileSize);
+    if(tileX >= 0 && tileX < worldWidth && tileY >= 0 && tileY < worldHeight){
+      ctx.strokeStyle = 'yellow';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(tileX * tileSize - offsetX, tileY * tileSize, tileSize, tileSize);
+    }
   }
 }
 
-// Init
+// Inventory functies
+function addToInventory(block){
+  if(block === 'air') return;
+  inventory[block] = (inventory[block] || 0) + 1;
+}
+
+function removeFromInventory(block){
+  if(inventory[block]){
+    inventory[block]--;
+    if(inventory[block] <= 0) delete inventory[block];
+  }
+}
+
+function getFirstInventoryBlock(){
+  // Return eerste blok met count > 0
+  for(let b in inventory){
+    if(inventory[b] > 0) return b;
+  }
+  return null;
+}
+
+function updateInventoryDisplay(){
+  const container = document.getElementById('inventorySlots');
+  container.innerHTML = '';
+  if(Object.keys(inventory).length === 0){
+    container.innerHTML = '<p>Inventory is empty</p>';
+    return;
+  }
+  for(let block in inventory){
+    let div = document.createElement('div');
+    div.className = 'item-slot';
+    div.textContent = `${block} x${inventory[block]}`;
+    div.style.backgroundColor = BLOCKS[block]?.color || 'gray';
+    container.appendChild(div);
+  }
+}
+
 generateWorld();
 gameLoop();
 </script>
