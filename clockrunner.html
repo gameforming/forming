@@ -31,9 +31,9 @@
     let selectedDifficulty = "medium";
 
     const difficultySettings = {
-      easy: { speed: 4, obstacleChance: 0.0025 },
-      medium: { speed: 6, obstacleChance: 0.005 },
-      hard: { speed: 9, obstacleChance: 0.01 }
+      easy: { speed: 2.5, obstacleChance: 0.0025 },
+      medium: { speed: 3.5, obstacleChance: 0.005 },
+      hard: { speed: 5, obstacleChance: 0.01 }
     };
 
     function resetGame() {
@@ -46,8 +46,8 @@
       };
       obstacles = [];
       score = 0;
-      gravity = 0.6;
-      jumpPower = -12;
+      gravity = 0.4;
+      jumpPower = -8;
       isJumping = false;
       speed = difficultySettings[selectedDifficulty].speed;
     }
@@ -72,7 +72,6 @@
     }
 
     function update() {
-      // Beweging speler
       player.vy += gravity;
       player.y += player.vy;
 
@@ -82,19 +81,15 @@
         isJumping = false;
       }
 
-      // Beweging obstakels
       for (const obs of obstacles) {
         obs.x -= speed;
       }
 
-      // Verwijder obstakels buiten scherm
       obstacles = obstacles.filter(o => o.x + o.width > 0);
 
-      // Score
       score++;
       document.getElementById("score").innerText = "Score: " + score;
 
-      // Botsing
       for (const obs of obstacles) {
         if (player.x < obs.x + obs.width &&
             player.x + player.width > obs.x &&
@@ -105,7 +100,6 @@
         }
       }
 
-      // Spawn obstakel
       spawnObstacle();
     }
 
@@ -133,7 +127,9 @@
       drawObstacles();
     }
 
+    let running = false;
     function gameLoop() {
+      if (!running) return;
       update();
       draw();
       requestAnimationFrame(gameLoop);
@@ -142,10 +138,12 @@
     function startGame() {
       selectedDifficulty = document.getElementById("difficulty").value;
       resetGame();
+      running = true;
       gameLoop();
     }
 
     function endGame() {
+      running = false;
       alert("Game over! Je score: " + score);
       if (!leaderboard[selectedDifficulty] || score > leaderboard[selectedDifficulty]) {
         leaderboard[selectedDifficulty] = score;
