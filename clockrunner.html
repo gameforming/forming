@@ -1,208 +1,205 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Clock Runner</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      background: #111;
-      color: white;
-    }
-    canvas {
-      background: #222;
-      display: block;
-      margin: 20px auto;
-      border: 3px solid white;
-    }
-    #leaderboard {
-      margin-top: 20px;
-    }
-    select {
-      font-size: 16px;
-      margin-top: 10px;
-    }
-  </style>
-</head>
-<body>
-  <h1>Clock Runner</h1>
-  <select id="difficulty">
-    <option value="easy">Easy</option>
-    <option value="medium" selected>Medium</option>
-    <option value="hard">Hard</option>
-  </select>
-  <canvas id="gameCanvas" width="800" height="400"></canvas>
-  <div id="leaderboard"></div>
+import pygame
+import random
+import os
+import sys
 
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+pygame.init()
+WIDTH, HEIGHT = 800, 400
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Clock Runner")
+clock = pygame.time.Clock()
+font = pygame.font.SysFont("Arial", 24)
 
-    const gravity = 0.5;
-    let player, spikes, score, gameOver, jumpPressed, selectedDifficulty;
-    const difficulties = {
-      easy: { speed: 3, spikeCount: 3 },
-      medium: { speed: 4, spikeCount: 5 },
-      hard: { speed: 5, spikeCount: 7 }
-    };
+# Speler
+player = pygame.Rect(100, HEIGHT - 60, 40, 40)
+player_y_velocity = 0
+gravity = 0.35
+jump_strength = -9
+on_ground = True
 
-    const leaderboard = JSON.parse(localStorage.getItem("clockLeaderboard")) || {
-      easy: 0,
-      medium: 0,
-      hard: 0
-    };
+# Spikes
+spikes = []
+spike_timer = 0
+spike_interval = 150  # minder spikes = trager spawnen
+spike_speed = 3
 
-    function resetGame() {
-      selectedDifficulty = document.getElementById("difficulty").value;
-      const { speed, spikeCount } = difficulties[selectedDifficulty];
+# Clocks
+clocks = []
+clock_timer = 0
+clock_interval = 250
 
-      player = {
-        x: 100,
-        y: canvas.height - 60,
-        width: 30,
-        height: 30,
-        vy: 0,
-        onGround: true
-      };
+# Score & leaderboard
+score = 0
+highscore = 0
+game_over = False
+leaderboard_file = "leaderboard.txt"
 
-      spikes = [];
-      for (let i = 0; i < spikeCount; i++) {
-        spikes.push({
-          x: 800 + i * 300,
-          y: canvas.height - 30,
-          width: 30,
-          height: 30
-        });
-      }
+# Moeilijkheidsgraden instellingen
+difficulty = "normal"  # default
 
-      score = 0;
-      gameOver = false;
-      jumpPressed = false;
-      playerSpeed = speed;
-    }
+def set_difficulty(level):
+    global spike_interval, spike_speed, clock_interval
+    if level == "easy":
+        spike_interval = 200
+        spike_speed = 2
+        clock_interval = 300
+    elif level == "hard":
+        spike_interval = 100
+        spike_speed = 5
+        clock_interval = 180
+    else:  # normal
+        spike_interval = 150
+        spike_speed = 3
+        clock_interval = 250
 
-    function update() {
-      if (gameOver) return;
+def load_leaderboard():
+    if os.path.exists(leaderboard_file):
+        with open(leaderboard_file, "r") as f:
+            try:
+                return int(f.read().strip())
+            except:
+                return 0
+    return 0
 
-      player.vy += gravity;
-      player.y += player.vy;
+def save_leaderboard(score):
+    with open(leaderboard_file, "w") as f:
+        f.write(str(score))
 
-      if (player.y >= canvas.height - player.height - 30) {
-        player.y = canvas.height - player.height - 30;
-        player.vy = 0;
-        player.onGround = true;
-      }
+highscore = load_leaderboard()
 
-      for (let spike of spikes) {
-        spike.x -= playerSpeed;
-        if (spike.x + spike.width < 0) {
-          spike.x = 800 + Math.random() * 300;
-          score++;
-        }
+def reset_game():
+    global player, player_y_velocity, on_ground, spikes, spike_timer, score, game_over, clocks, clock_timer
+    player.x, player.y = 100, HEIGHT - 60
+    player_y_velocity = 0
+    on_ground = True
+    spikes.clear()
+    spike_timer = 0
+    clocks.clear()
+    clock_timer = 0
+    score = 0
+    game_over = False
 
-        if (
-          player.x < spike.x + spike.width &&
-          player.x + player.width > spike.x &&
-          player.y < spike.y + spike.height &&
-          player.y + player.height > spike.y
-        ) {
-          gameOver = true;
-          handleGameOver();
-        }
-      }
-    }
+# Buttons (for pygbag/web)
+def draw_button(text, rect, active=True):
+    color = (0, 180, 0) if active else (100, 100, 100)
+    pygame.draw.rect(screen, color, rect)
+    txt = font.render(text, True, (255, 255, 255))
+    screen.blit(txt, (rect.x + (rect.width - txt.get_width())//2, rect.y + (rect.height - txt.get_height())//2))
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+button_home_rect = pygame.Rect(WIDTH - 140, 10, 130, 40)
+button_easy_rect = pygame.Rect(10, 50, 100, 40)
+button_normal_rect = pygame.Rect(120, 50, 120, 40)
+button_hard_rect = pygame.Rect(250, 50, 100, 40)
 
-      // Background
-      ctx.fillStyle = "#333";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+running = True
+while running:
+    clock.tick(60)
+    screen.fill((30, 30, 30))
 
-      // Ground
-      ctx.fillStyle = "#555";
-      ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = event.pos
+            if button_home_rect.collidepoint(mx, my):
+                # Back to homepage: werkt als index.html aanwezig is in pygbag/web omgeving
+                if "pygbag" in sys.modules:
+                    import webbrowser
+                    webbrowser.open("index.html")
+                else:
+                    print("Back to homepage werkt alleen in pygbag/web omgeving.")
+            elif button_easy_rect.collidepoint(mx, my):
+                difficulty = "easy"
+                set_difficulty(difficulty)
+                reset_game()
+            elif button_normal_rect.collidepoint(mx, my):
+                difficulty = "normal"
+                set_difficulty(difficulty)
+                reset_game()
+            elif button_hard_rect.collidepoint(mx, my):
+                difficulty = "hard"
+                set_difficulty(difficulty)
+                reset_game()
 
-      // Player
-      ctx.fillStyle = "white";
-      ctx.fillRect(player.x, player.y, player.width, player.height);
+    keys = pygame.key.get_pressed()
+    if not game_over:
+        if keys[pygame.K_SPACE] and on_ground:
+            player_y_velocity = jump_strength
+            on_ground = False
+    else:
+        # Automatisch reset na game over
+        reset_game()
 
-      // Spikes
-      ctx.fillStyle = "red";
-      for (let spike of spikes) {
-        ctx.beginPath();
-        ctx.moveTo(spike.x, spike.y + spike.height);
-        ctx.lineTo(spike.x + spike.width / 2, spike.y);
-        ctx.lineTo(spike.x + spike.width, spike.y + spike.height);
-        ctx.closePath();
-        ctx.fill();
-      }
+    # Beweging speler
+    if not game_over:
+        player_y_velocity += gravity
+        player.y += int(player_y_velocity)
 
-      // Score
-      ctx.fillStyle = "white";
-      ctx.font = "20px sans-serif";
-      ctx.fillText("Score: " + score, 10, 30);
+        if player.bottom >= HEIGHT - 20:
+            player.bottom = HEIGHT - 20
+            player_y_velocity = 0
+            on_ground = True
 
-      // Game over
-      if (gameOver) {
-        ctx.fillStyle = "yellow";
-        ctx.font = "40px sans-serif";
-        ctx.fillText("Game Over", canvas.width / 2 - 100, canvas.height / 2);
-        ctx.font = "20px sans-serif";
-        ctx.fillText("Click to restart", canvas.width / 2 - 75, canvas.height / 2 + 30);
-      }
-    }
+        # Spikes aanmaken
+        spike_timer += 1
+        if spike_timer >= spike_interval:
+            spike_timer = 0
+            spike_height = 40
+            new_spike = pygame.Rect(WIDTH, HEIGHT - 20 - spike_height, 20, spike_height)
+            spikes.append(new_spike)
 
-    function handleGameOver() {
-      if (!leaderboard[selectedDifficulty] || score > leaderboard[selectedDifficulty]) {
-        leaderboard[selectedDifficulty] = score;
-        localStorage.setItem("clockLeaderboard", JSON.stringify(leaderboard));
-      }
-      showLeaderboard();
-    }
+        # Spikes bewegen en check collision
+        for spike in spikes:
+            spike.x -= spike_speed
+            pygame.draw.rect(screen, (255, 0, 0), spike)
+            if player.colliderect(spike):
+                game_over = True
+                if score > highscore:
+                    highscore = score
+                    save_leaderboard(highscore)
 
-    function showLeaderboard() {
-      const board = document.getElementById("leaderboard");
-      board.innerHTML = "<h3>Leaderboard</h3>" +
-        Object.entries(leaderboard).map(([diff, s]) => `${diff}: ${s}`).join("<br>");
-    }
+        spikes = [s for s in spikes if s.right > 0]
 
-    function gameLoop() {
-      update();
-      draw();
-      requestAnimationFrame(gameLoop);
-    }
+        # Clocks aanmaken
+        clock_timer += 1
+        if clock_timer >= clock_interval:
+            clock_timer = 0
+            new_clock = pygame.Rect(WIDTH, random.randint(100, HEIGHT - 100), 20, 20)
+            clocks.append(new_clock)
 
-    document.addEventListener("keydown", (e) => {
-      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
-        if (player.onGround && !jumpPressed) {
-          player.vy = -10;
-          player.onGround = false;
-          jumpPressed = true;
-        }
-      }
-    });
+        # Clocks bewegen en verzamelen
+        for c in clocks:
+            c.x -= spike_speed
+            pygame.draw.rect(screen, (0, 255, 255), c)
+            if player.colliderect(c):
+                score += 1
+                clocks.remove(c)
 
-    document.addEventListener("keyup", (e) => {
-      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
-        jumpPressed = false;
-      }
-    });
+        clocks = [c for c in clocks if c.right > 0]
 
-    canvas.addEventListener("click", () => {
-      if (gameOver) {
-        resetGame();
-      }
-    });
+    # Teken speler
+    pygame.draw.rect(screen, (255, 255, 0), player)
 
-    document.getElementById("difficulty").addEventListener("change", () => {
-      resetGame();
-    });
+    # Teken grond
+    pygame.draw.rect(screen, (100, 100, 100), (0, HEIGHT - 20, WIDTH, 20))
 
-    resetGame();
-    showLeaderboard();
-    gameLoop();
-  </script>
-</body>
-</html>
+    # Score en highscore
+    score_text = font.render(f"Score: {score}  Highscore: {highscore}", True, (255, 255, 255))
+    screen.blit(score_text, (10, 10))
+
+    # Game over tekst
+    if game_over:
+        game_over_text = font.render("Game Over! Herstart...", True, (255, 100, 100))
+        screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 2))
+
+    # Moeilijkheidsgraden knoppen
+    draw_button("Easy", button_easy_rect, difficulty=="easy")
+    draw_button("Normal", button_normal_rect, difficulty=="normal")
+    draw_button("Hard", button_hard_rect, difficulty=="hard")
+
+    # Back to homepage knop
+    draw_button("Back to homepage", button_home_rect)
+
+    pygame.display.flip()
+
+pygame.quit()
