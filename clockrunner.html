@@ -1,159 +1,165 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Clock Runner</title>
   <style>
-    canvas { background: #cceeff; display: block; margin: 20px auto; border: 3px solid #333; }
-    #ui { text-align: center; font-family: sans-serif; margin-top: 10px; }
-    #ui > * { margin: 5px; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #111;
+      color: white;
+    }
+    canvas {
+      background: #222;
+      display: block;
+      margin: 20px auto;
+      border: 3px solid white;
+    }
+    #leaderboard {
+      margin-top: 20px;
+    }
+    select {
+      font-size: 16px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="600" height="300"></canvas>
-  <div id="ui">
-    <select id="difficulty">
-      <option value="easy">Makkelijk</option>
-      <option value="medium" selected>Normaal</option>
-      <option value="hard">Moeilijk</option>
-    </select>
-    <button id="startBtn" onclick="startGame()">Start Game</button>
-    <div id="score">Score: 0</div>
-    <div id="leaderboard"></div>
-  </div>
+  <h1>Clock Runner</h1>
+  <select id="difficulty">
+    <option value="easy">Easy</option>
+    <option value="medium" selected>Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <div id="leaderboard"></div>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    const GROUND_Y = canvas.height - 50;
-    let player, obstacles, score, speed, gravity, jumpPower, isJumping, animationFrameId;
-    let leaderboard = JSON.parse(localStorage.getItem("clockLeaderboard") || '{}');
-    let selectedDifficulty = "medium";
-    let running = false;
+    const gravity = 0.5;
+    let player, spikes, score, gameOver, jumpPressed, selectedDifficulty;
+    const difficulties = {
+      easy: { speed: 3, spikeCount: 3 },
+      medium: { speed: 4, spikeCount: 5 },
+      hard: { speed: 5, spikeCount: 7 }
+    };
 
-    const difficultySettings = {
-      easy: { speed: 2.5, obstacleChance: 0.0025 },
-      medium: { speed: 3.5, obstacleChance: 0.005 },
-      hard: { speed: 5, obstacleChance: 0.01 }
+    const leaderboard = JSON.parse(localStorage.getItem("clockLeaderboard")) || {
+      easy: 0,
+      medium: 0,
+      hard: 0
     };
 
     function resetGame() {
+      selectedDifficulty = document.getElementById("difficulty").value;
+      const { speed, spikeCount } = difficulties[selectedDifficulty];
+
       player = {
-        x: 50,
-        y: GROUND_Y,
+        x: 100,
+        y: canvas.height - 60,
         width: 30,
         height: 30,
-        vy: 0
+        vy: 0,
+        onGround: true
       };
-      obstacles = [];
-      score = 0;
-      gravity = 0.4;
-      jumpPower = -8;
-      isJumping = false;
-      speed = difficultySettings[selectedDifficulty].speed;
-      document.getElementById("score").innerText = "Score: 0";
-    }
 
-    function drawPlayer() {
-      ctx.fillStyle = "gold";
-      ctx.beginPath();
-      ctx.arc(player.x + player.width / 2, player.y + player.height / 2, player.width / 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    function drawObstacles() {
-      ctx.fillStyle = "red";
-      for (const obs of obstacles) {
-        ctx.beginPath();
-        ctx.moveTo(obs.x, obs.y + obs.height);
-        ctx.lineTo(obs.x + obs.width / 2, obs.y);
-        ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-
-    function update() {
-      player.vy += gravity;
-      player.y += player.vy;
-
-      if (player.y > GROUND_Y) {
-        player.y = GROUND_Y;
-        player.vy = 0;
-        isJumping = false;
-      }
-
-      for (const obs of obstacles) {
-        obs.x -= speed;
-      }
-
-      obstacles = obstacles.filter(o => o.x + o.width > 0);
-
-      score++;
-      document.getElementById("score").innerText = "Score: " + score;
-
-      for (const obs of obstacles) {
-        if (player.x < obs.x + obs.width &&
-            player.x + player.width > obs.x &&
-            player.y < obs.y + obs.height &&
-            player.y + player.height > obs.y) {
-          endGame();
-          return;
-        }
-      }
-
-      spawnObstacle();
-    }
-
-    function spawnObstacle() {
-      const chance = difficultySettings[selectedDifficulty].obstacleChance;
-      if (Math.random() < chance) {
-        obstacles.push({
-          x: canvas.width,
-          y: GROUND_Y,
-          width: 20,
+      spikes = [];
+      for (let i = 0; i < spikeCount; i++) {
+        spikes.push({
+          x: 800 + i * 300,
+          y: canvas.height - 30,
+          width: 30,
           height: 30
         });
       }
+
+      score = 0;
+      gameOver = false;
+      jumpPressed = false;
+      playerSpeed = speed;
     }
 
-    function drawGround() {
-      ctx.fillStyle = "#444";
-      ctx.fillRect(0, GROUND_Y + 30, canvas.width, 20);
+    function update() {
+      if (gameOver) return;
+
+      player.vy += gravity;
+      player.y += player.vy;
+
+      if (player.y >= canvas.height - player.height - 30) {
+        player.y = canvas.height - player.height - 30;
+        player.vy = 0;
+        player.onGround = true;
+      }
+
+      for (let spike of spikes) {
+        spike.x -= playerSpeed;
+        if (spike.x + spike.width < 0) {
+          spike.x = 800 + Math.random() * 300;
+          score++;
+        }
+
+        if (
+          player.x < spike.x + spike.width &&
+          player.x + player.width > spike.x &&
+          player.y < spike.y + spike.height &&
+          player.y + player.height > spike.y
+        ) {
+          gameOver = true;
+          handleGameOver();
+        }
+      }
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawGround();
-      drawPlayer();
-      drawObstacles();
+
+      // Background
+      ctx.fillStyle = "#333";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Ground
+      ctx.fillStyle = "#555";
+      ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+
+      // Player
+      ctx.fillStyle = "white";
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+
+      // Spikes
+      ctx.fillStyle = "red";
+      for (let spike of spikes) {
+        ctx.beginPath();
+        ctx.moveTo(spike.x, spike.y + spike.height);
+        ctx.lineTo(spike.x + spike.width / 2, spike.y);
+        ctx.lineTo(spike.x + spike.width, spike.y + spike.height);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Score
+      ctx.fillStyle = "white";
+      ctx.font = "20px sans-serif";
+      ctx.fillText("Score: " + score, 10, 30);
+
+      // Game over
+      if (gameOver) {
+        ctx.fillStyle = "yellow";
+        ctx.font = "40px sans-serif";
+        ctx.fillText("Game Over", canvas.width / 2 - 100, canvas.height / 2);
+        ctx.font = "20px sans-serif";
+        ctx.fillText("Click to restart", canvas.width / 2 - 75, canvas.height / 2 + 30);
+      }
     }
 
-    function gameLoop() {
-      if (!running) return;
-      update();
-      draw();
-      animationFrameId = requestAnimationFrame(gameLoop);
-    }
-
-    function startGame() {
-      selectedDifficulty = document.getElementById("difficulty").value;
-      resetGame();
-      running = true;
-      document.getElementById("startBtn").disabled = true;
-      gameLoop();
-    }
-
-    function endGame() {
-      running = false;
-      cancelAnimationFrame(animationFrameId);
-      alert("Game over! Je score: " + score);
+    function handleGameOver() {
       if (!leaderboard[selectedDifficulty] || score > leaderboard[selectedDifficulty]) {
         leaderboard[selectedDifficulty] = score;
         localStorage.setItem("clockLeaderboard", JSON.stringify(leaderboard));
       }
       showLeaderboard();
-      document.getElementById("startBtn").disabled = false;
     }
 
     function showLeaderboard() {
@@ -162,14 +168,41 @@
         Object.entries(leaderboard).map(([diff, s]) => `${diff}: ${s}`).join("<br>");
     }
 
-    window.addEventListener("keydown", (e) => {
-      if (e.code === "Space" && !isJumping && running) {
-        player.vy = jumpPower;
-        isJumping = true;
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
+        if (player.onGround && !jumpPressed) {
+          player.vy = -10;
+          player.onGround = false;
+          jumpPressed = true;
+        }
       }
     });
 
+    document.addEventListener("keyup", (e) => {
+      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
+        jumpPressed = false;
+      }
+    });
+
+    canvas.addEventListener("click", () => {
+      if (gameOver) {
+        resetGame();
+      }
+    });
+
+    document.getElementById("difficulty").addEventListener("change", () => {
+      resetGame();
+    });
+
+    resetGame();
     showLeaderboard();
+    gameLoop();
   </script>
 </body>
 </html>
