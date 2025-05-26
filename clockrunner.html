@@ -1,107 +1,117 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Clock Runner</title>
   <style>
-    body {
-      margin: 0;
-      background: #111;
-      color: white;
-      font-family: Arial;
-    }
-    canvas {
-      display: block;
-      background: #222;
-    }
+    canvas { background: #cceeff; display: block; margin: 20px auto; border: 3px solid #333; }
+    #ui { text-align: center; font-family: sans-serif; margin-top: 10px; }
+    #ui > * { margin: 5px; }
   </style>
 </head>
 <body>
-  <select id="difficulty" style="position:fixed;top:10px;left:10px;z-index:10;">
-    <option value="easy">Easy</option>
-    <option value="medium" selected>Medium</option>
-    <option value="hard">Hard</option>
-  </select>
-  <button onclick="showLeaderboard()" style="position:fixed;top:10px;right:10px;z-index:10;">Toon Leaderboard</button>
-  <div id="leaderboard" style="position:fixed;top:50px;right:10px;background:#000;padding:10px;display:none;"></div>
-  <div id="scoreboard" style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:10;"></div>
-  <canvas id="gameCanvas" width="800" height="400"></canvas>
-  
+  <canvas id="gameCanvas" width="600" height="300"></canvas>
+  <div id="ui">
+    <select id="difficulty">
+      <option value="easy">Makkelijk</option>
+      <option value="medium" selected>Normaal</option>
+      <option value="hard">Moeilijk</option>
+    </select>
+    <button onclick="startGame()">Start Game</button>
+    <div id="score">Score: 0</div>
+    <div id="leaderboard"></div>
+  </div>
+
   <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-    const GRAVITY = 0.5;
-    const JUMP_STRENGTH = -10;
     const GROUND_Y = canvas.height - 50;
+    let player, obstacles, score, speed, gravity, jumpPower, isJumping;
+    let leaderboard = JSON.parse(localStorage.getItem("clockLeaderboard") || '{}');
+    let selectedDifficulty = "medium";
 
-    const player = {
-      x: 100,
-      y: GROUND_Y,
-      width: 30,
-      height: 30,
-      colorIndex: 0,
-      vy: 0,
-      isJumping: false
+    const difficultySettings = {
+      easy: { speed: 4, obstacleChance: 0.005 },
+      medium: { speed: 6, obstacleChance: 0.01 },
+      hard: { speed: 9, obstacleChance: 0.02 }
     };
 
-    const colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];
-
-    let obstacles = [];
-    let clocks = [];
-    let distance = 0;
-    let clocksCollected = 0;
-    let gameOver = false;
-
-    let selectedDifficulty = 'medium';
-    const difficultySpeeds = { easy: 4, medium: 6, hard: 9 };
-    let speed = difficultySpeeds[selectedDifficulty];
-
-    document.getElementById('difficulty').addEventListener('change', e => {
-      selectedDifficulty = e.target.value;
-      resetGame();
-    });
-
-    function saveToLeaderboard(score) {
-      const key = 'clockrunner_' + selectedDifficulty;
-      const data = JSON.parse(localStorage.getItem(key)) || [];
-      data.push({ score, date: new Date().toLocaleString() });
-      data.sort((a, b) => b.score - a.score);
-      localStorage.setItem(key, JSON.stringify(data.slice(0, 10)));
-    }
-
-    function showLeaderboard() {
-      const key = 'clockrunner_' + selectedDifficulty;
-      const data = JSON.parse(localStorage.getItem(key)) || [];
-      let html = `<h3>Leaderboard (${selectedDifficulty})</h3>`;
-      if (data.length === 0) {
-        html += "<p>Geen scores</p>";
-      } else {
-        html += '<ol>' + data.map(s => `<li>${s.score} m - ${s.date}</li>`).join('') + '</ol>';
-      }
-      document.getElementById('leaderboard').innerHTML = html;
-      document.getElementById('leaderboard').style.display = 'block';
-    }
-
     function resetGame() {
+      player = {
+        x: 50,
+        y: GROUND_Y,
+        width: 30,
+        height: 30,
+        vy: 0
+      };
       obstacles = [];
-      clocks = [];
-      distance = 0;
-      clocksCollected = 0;
-      speed = difficultySpeeds[selectedDifficulty];
-      gameOver = false;
-      player.y = GROUND_Y;
-      player.vy = 0;
-      player.isJumping = false;
-      player.colorIndex = 0;
-      document.getElementById('scoreboard').textContent = `Afstand: 0 m | Clocks: 0`;
-      document.getElementById('leaderboard').style.display = 'none';
-      loop();
+      score = 0;
+      gravity = 0.6;
+      jumpPower = -12;
+      isJumping = false;
+      speed = difficultySettings[selectedDifficulty].speed;
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = "gold";
+      ctx.beginPath();
+      ctx.arc(player.x + player.width / 2, player.y + player.height / 2, player.width / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawObstacles() {
+      ctx.fillStyle = "red";
+      for (const obs of obstacles) {
+        ctx.beginPath();
+        ctx.moveTo(obs.x, obs.y + obs.height);
+        ctx.lineTo(obs.x + obs.width / 2, obs.y);
+        ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    function update() {
+      // Beweging speler
+      player.vy += gravity;
+      player.y += player.vy;
+
+      if (player.y > GROUND_Y) {
+        player.y = GROUND_Y;
+        player.vy = 0;
+        isJumping = false;
+      }
+
+      // Beweging obstakels
+      for (const obs of obstacles) {
+        obs.x -= speed;
+      }
+
+      // Verwijder obstakels buiten scherm
+      obstacles = obstacles.filter(o => o.x + o.width > 0);
+
+      // Score
+      score++;
+      document.getElementById("score").innerText = "Score: " + score;
+
+      // Botsing
+      for (const obs of obstacles) {
+        if (player.x < obs.x + obs.width &&
+            player.x + player.width > obs.x &&
+            player.y < obs.y + obs.height &&
+            player.y + player.height > obs.y) {
+          endGame();
+          return;
+        }
+      }
+
+      // Spawn obstakel
+      spawnObstacle();
     }
 
     function spawnObstacle() {
-      if (Math.random() < 0.02) {
+      const chance = difficultySettings[selectedDifficulty].obstacleChance;
+      if (Math.random() < chance) {
         obstacles.push({
           x: canvas.width,
           y: GROUND_Y,
@@ -111,116 +121,53 @@
       }
     }
 
-    function spawnClock() {
-      if (Math.random() < 0.02) {
-        clocks.push({
-          x: canvas.width,
-          y: GROUND_Y - 60,
-          width: 20,
-          height: 20
-        });
-      }
-    }
-
-    function rectCollision(rect1, rect2) {
-      return (
-        rect1.x < rect2.x + rect2.width &&
-        rect1.x + rect1.width > rect2.x &&
-        rect1.y < rect2.y + rect2.height &&
-        rect1.y + rect1.height > rect2.y
-      );
-    }
-
-    function update() {
-      player.vy += GRAVITY;
-      player.y += player.vy;
-
-      if (player.y >= GROUND_Y) {
-        player.y = GROUND_Y;
-        player.vy = 0;
-        player.isJumping = false;
-      }
-
-      player.colorIndex = Math.floor(distance / 100) % colors.length;
-
-      obstacles.forEach(o => o.x -= speed);
-      clocks.forEach(c => c.x -= speed);
-
-      obstacles = obstacles.filter(o => o.x + o.width > 0);
-      clocks = clocks.filter(c => c.x + c.width > 0);
-
-      const playerRect = { x: player.x, y: player.y, width: player.width, height: player.height };
-
-      for (const o of obstacles) {
-        const spikeRect = { x: o.x, y: o.y, width: o.width, height: o.height };
-        if (rectCollision(playerRect, spikeRect)) {
-          if (player.y + player.height > spikeRect.y) {
-            gameOver = true;
-            saveToLeaderboard(Math.floor(distance));
-          }
-        }
-      }
-
-      clocks = clocks.filter(c => {
-        const clockRect = { x: c.x, y: c.y, width: c.width, height: c.height };
-        if (rectCollision(playerRect, clockRect)) {
-          clocksCollected++;
-          return false;
-        }
-        return true;
-      });
-
-      distance += speed * 0.1;
-      document.getElementById('scoreboard').textContent = `Afstand: ${Math.floor(distance)} m | Clocks: ${clocksCollected}`;
+    function drawGround() {
+      ctx.fillStyle = "#444";
+      ctx.fillRect(0, GROUND_Y + 30, canvas.width, 20);
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = '#444';
-      ctx.fillRect(0, GROUND_Y + player.height, canvas.width, canvas.height - GROUND_Y);
-
-      ctx.fillStyle = colors[player.colorIndex];
-      ctx.fillRect(player.x, player.y, player.width, player.height);
-
-      ctx.fillStyle = 'gray';
-      obstacles.forEach(o => {
-        ctx.beginPath();
-        ctx.moveTo(o.x, o.y + o.height);
-        ctx.lineTo(o.x + o.width / 2, o.y);
-        ctx.lineTo(o.x + o.width, o.y + o.height);
-        ctx.closePath();
-        ctx.fill();
-      });
-
-      ctx.fillStyle = 'gold';
-      clocks.forEach(c => ctx.fillRect(c.x, c.y, c.width, c.height));
+      drawGround();
+      drawPlayer();
+      drawObstacles();
     }
 
-    function loop() {
-      if (!gameOver) {
-        update();
-        draw();
-        spawnObstacle();
-        spawnClock();
-        requestAnimationFrame(loop);
-      } else {
-        draw();
-        document.getElementById('scoreboard').textContent += ' | GAME OVER - Druk R om opnieuw te starten';
-      }
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
     }
 
-    document.addEventListener('keydown', e => {
-      if (e.key === ' ' && !player.isJumping && !gameOver) {
-        player.vy = JUMP_STRENGTH;
-        player.isJumping = true;
+    function startGame() {
+      selectedDifficulty = document.getElementById("difficulty").value;
+      resetGame();
+      gameLoop();
+    }
+
+    function endGame() {
+      alert("Game over! Je score: " + score);
+      if (!leaderboard[selectedDifficulty] || score > leaderboard[selectedDifficulty]) {
+        leaderboard[selectedDifficulty] = score;
+        localStorage.setItem("clockLeaderboard", JSON.stringify(leaderboard));
       }
-      if (e.key === 'r' || e.key === 'R') {
-        resetGame();
+      showLeaderboard();
+    }
+
+    function showLeaderboard() {
+      const board = document.getElementById("leaderboard");
+      board.innerHTML = "<h3>Leaderboard</h3>" +
+        Object.entries(leaderboard).map(([diff, s]) => `${diff}: ${s}`).join("<br>");
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && !isJumping) {
+        player.vy = jumpPower;
+        isJumping = true;
       }
     });
 
-    resetGame();
+    showLeaderboard();
   </script>
 </body>
 </html>
