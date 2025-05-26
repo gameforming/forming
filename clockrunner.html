@@ -16,7 +16,7 @@
       <option value="medium" selected>Normaal</option>
       <option value="hard">Moeilijk</option>
     </select>
-    <button onclick="startGame()">Start Game</button>
+    <button id="startBtn" onclick="startGame()">Start Game</button>
     <div id="score">Score: 0</div>
     <div id="leaderboard"></div>
   </div>
@@ -26,9 +26,10 @@
     const ctx = canvas.getContext("2d");
 
     const GROUND_Y = canvas.height - 50;
-    let player, obstacles, score, speed, gravity, jumpPower, isJumping;
+    let player, obstacles, score, speed, gravity, jumpPower, isJumping, animationFrameId;
     let leaderboard = JSON.parse(localStorage.getItem("clockLeaderboard") || '{}');
     let selectedDifficulty = "medium";
+    let running = false;
 
     const difficultySettings = {
       easy: { speed: 2.5, obstacleChance: 0.0025 },
@@ -50,6 +51,7 @@
       jumpPower = -8;
       isJumping = false;
       speed = difficultySettings[selectedDifficulty].speed;
+      document.getElementById("score").innerText = "Score: 0";
     }
 
     function drawPlayer() {
@@ -127,29 +129,31 @@
       drawObstacles();
     }
 
-    let running = false;
     function gameLoop() {
       if (!running) return;
       update();
       draw();
-      requestAnimationFrame(gameLoop);
+      animationFrameId = requestAnimationFrame(gameLoop);
     }
 
     function startGame() {
       selectedDifficulty = document.getElementById("difficulty").value;
       resetGame();
       running = true;
+      document.getElementById("startBtn").disabled = true;
       gameLoop();
     }
 
     function endGame() {
       running = false;
+      cancelAnimationFrame(animationFrameId);
       alert("Game over! Je score: " + score);
       if (!leaderboard[selectedDifficulty] || score > leaderboard[selectedDifficulty]) {
         leaderboard[selectedDifficulty] = score;
         localStorage.setItem("clockLeaderboard", JSON.stringify(leaderboard));
       }
       showLeaderboard();
+      document.getElementById("startBtn").disabled = false;
     }
 
     function showLeaderboard() {
@@ -159,7 +163,7 @@
     }
 
     window.addEventListener("keydown", (e) => {
-      if (e.code === "Space" && !isJumping) {
+      if (e.code === "Space" && !isJumping && running) {
         player.vy = jumpPower;
         isJumping = true;
       }
