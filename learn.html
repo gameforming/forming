@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Learnforming</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background-color: #f4f4f4;
+      color: #333;
+      text-align: center;
+      padding: 20px;
+    }
+    input, button, textarea, select {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+    }
+    .list {
+      margin-top: 20px;
+    }
+    .card {
+      background: white;
+      border: 1px solid #ccc;
+      margin: 10px auto;
+      padding: 20px;
+      max-width: 500px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Learnforming</h1>
+
+  <div>
+    <h3>➕ Maak een nieuwe woordenlijst</h3>
+    <input id="list-name" placeholder="Naam van lijst (bijv. Engels)" />
+    <select id="list-language">
+      <option value="Engels">Engels</option>
+      <option value="Frans">Frans</option>
+      <option value="Duits">Duits</option>
+      <option value="Spaans">Spaans</option>
+      <option value="Italiaans">Italiaans</option>
+    </select><br>
+    <textarea id="list-content" placeholder="Voorbeeld:\nhuis=house\ntafel=table" rows="5" cols="30"></textarea><br>
+    <button onclick="saveList()">Lijst opslaan</button>
+  </div>
+
+  <div class="list">
+    <h3>🔍 Zoek een lijst</h3>
+    <input id="search" placeholder="Bijv. engels" oninput="showLists()" />
+    <div id="lists"></div>
+  </div>
+
+  <div class="card" id="quiz" style="display:none;">
+    <h3 id="question">Vraag</h3>
+    <input id="answer" placeholder="Jouw antwoord" />
+    <button onclick="checkAnswer()">Check</button>
+    <p id="feedback"></p>
+  </div>
+
+  <script>
+    let currentList = [];
+    let currentIndex = 0;
+    let currentLanguage = "Engels";
+
+    function saveList() {
+      const name = document.getElementById("list-name").value.trim();
+      const content = document.getElementById("list-content").value.trim();
+      const language = document.getElementById("list-language").value;
+
+      if (!name || !content) return alert("Vul alles in!");
+
+      const pairs = content.split('\n').map(line => {
+        const [nl, en] = line.split('=').map(x => x.trim());
+        return { nl, en };
+      });
+
+      const listData = {
+        language: language,
+        words: pairs
+      };
+
+      localStorage.setItem("learn_" + name.toLowerCase(), JSON.stringify(listData));
+      alert("Lijst opgeslagen!");
+      document.getElementById("list-name").value = "";
+      document.getElementById("list-content").value = "";
+      showLists();
+    }
+
+    function showLists() {
+      const search = document.getElementById("search").value.toLowerCase();
+      const listsDiv = document.getElementById("lists");
+      listsDiv.innerHTML = "";
+
+      for (let key in localStorage) {
+        if (key.startsWith("learn_") && key.includes(search)) {
+          const name = key.replace("learn_", "");
+          const btn = document.createElement("button");
+          btn.textContent = name;
+          btn.onclick = () => startQuiz(name);
+          listsDiv.appendChild(btn);
+        }
+      }
+    }
+
+    function startQuiz(name) {
+      const data = JSON.parse(localStorage.getItem("learn_" + name));
+      currentList = shuffle([...data.words]);
+      currentLanguage = data.language;
+      currentIndex = 0;
+      document.getElementById("quiz").style.display = "block";
+      nextQuestion();
+    }
+
+    function nextQuestion() {
+      if (currentList.length === 0) return;
+      const pair = currentList[currentIndex];
+      document.getElementById("question").textContent = `Wat is "${pair.nl}" in het ${currentLanguage}?`;
+      document.getElementById("answer").value = "";
+      document.getElementById("feedback").textContent = "";
+    }
+
+    function checkAnswer() {
+      const userInput = document.getElementById("answer").value.trim().toLowerCase();
+      const correct = currentList[currentIndex].en.toLowerCase();
+
+      if (userInput === correct) {
+        document.getElementById("feedback").textContent = "✅ Goed!";
+      } else {
+        document.getElementById("feedback").textContent = `❌ Fout! Antwoord: ${correct}`;
+      }
+
+      setTimeout(() => {
+        currentIndex = (currentIndex + 1) % currentList.length;
+        nextQuestion();
+      }, 1500);
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    showLists();
+  </script>
+</body>
+</html>
