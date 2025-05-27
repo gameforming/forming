@@ -1,165 +1,176 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Learnforming</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #1e1e2f;
+      font-family: Arial, sans-serif;
+      background-color: #1e1e2f;
       color: white;
+      padding: 20px;
       text-align: center;
-      padding: 30px;
     }
-    input, select, button, textarea {
-      font-size: 1rem;
-      padding: 10px;
+    h1 {
+      margin-bottom: 20px;
+    }
+    select, input, button, textarea {
       margin: 10px;
-      border-radius: 5px;
-      border: none;
+      padding: 8px;
+      font-size: 16px;
     }
-    textarea {
-      width: 100%;
-      height: 200px;
-      resize: vertical;
+    #word-list {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 10px;
     }
-    button {
-      background: #4caf50;
-      color: white;
-      cursor: pointer;
+    .word-pair {
+      display: flex;
+      margin: 5px;
     }
-    button:hover {
-      background: #45a049;
+    .word-pair input {
+      margin: 0 5px;
     }
-    .correct {
-      color: #00e676;
-    }
-    .wrong {
-      color: #ff1744;
+    #quiz-section {
+      margin-top: 30px;
     }
   </style>
 </head>
 <body>
   <h1>Learnforming</h1>
 
-  <input type="text" id="list-name" placeholder="Naam van lijst" />
-  <select id="list-select">
-    <option value="" disabled selected>Kies een lijst</option>
-  </select>
-  <br>
-  <textarea id="word-input" placeholder="woord = vertaling"></textarea>
-  <br>
+  <input type="text" id="list-name" placeholder="Naam van woordenlijst" />
+  <button onclick="addNewInput()">Voeg woord toe</button>
   <button onclick="saveList()">Opslaan</button>
-  <button onclick="startQuiz()">Start Quiz</button>
-  <br>
-  <input type="text" id="language" placeholder="Taal (bijv. Frans)" />
-  <div id="quiz-area" style="margin-top: 30px;"></div>
+  <div id="word-list"></div>
+
+  <hr style="margin-top: 30px;" />
+
+  <h2>Oefenen</h2>
+  <select id="list-select">
+    <option value="">Kies een lijst</option>
+  </select>
+  <input type="text" id="language" placeholder="Doeltaal (bv. Frans)" />
+  <button onclick="startQuiz()">Start quiz</button>
+
+  <div id="quiz-section" style="display:none;">
+    <p id="quiz-question"></p>
+    <input type="text" id="quiz-answer" placeholder="Jouw antwoord" />
+    <button onclick="checkAnswer()">Controleer</button>
+    <p id="quiz-feedback"></p>
+  </div>
 
   <script>
-    const wordInput = document.getElementById("word-input");
-    const listNameInput = document.getElementById("list-name");
-    const listSelect = document.getElementById("list-select");
-    const quizArea = document.getElementById("quiz-area");
-    const languageInput = document.getElementById("language");
+    let currentList = [];
 
-    // Voeg "=" automatisch toe
-    wordInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (!wordInput.value.endsWith("=")) {
-          wordInput.value += " = ";
-        }
-        wordInput.value += "\n";
-      }
-    });
+    function addNewInput(word = "", translation = "") {
+      const container = document.createElement("div");
+      container.className = "word-pair";
 
-    // Laden opgeslagen lijsten
-    function loadLists() {
-      listSelect.innerHTML = `<option disabled selected>Kies een lijst</option>`;
-      for (let key in localStorage) {
-        if (localStorage.hasOwnProperty(key)) {
-          const option = document.createElement("option");
-          option.value = key;
-          option.textContent = key;
-          listSelect.appendChild(option);
-        }
-      }
+      const wordInput = document.createElement("input");
+      wordInput.placeholder = "woord";
+      wordInput.value = word;
+
+      const equals = document.createElement("span");
+      equals.textContent = " = ";
+
+      const translationInput = document.createElement("input");
+      translationInput.placeholder = "vertaling";
+      translationInput.value = translation;
+
+      container.appendChild(wordInput);
+      container.appendChild(equals);
+      container.appendChild(translationInput);
+
+      document.getElementById("word-list").appendChild(container);
     }
 
-    // Lijst selecteren => woorden tonen
-    listSelect.addEventListener("change", () => {
-      const name = listSelect.value;
-      const list = JSON.parse(localStorage.getItem(name));
-      if (list) {
-        listNameInput.value = name;
-        wordInput.value = list.map(pair => `${pair[0]} = ${pair[1]}`).join("\n");
-      }
-    });
-
-    // Opslaan met filtering van lege regels
     function saveList() {
-      const name = listNameInput.value.trim();
-      if (!name) return alert("Voer een naam in voor de lijst.");
-      const lines = wordInput.value.split("\n");
-      const list = lines.map(l => l.split("=")).filter(pair => pair.length === 2 && pair[0].trim() && pair[1].trim());
-      const cleanedList = list.map(pair => [pair[0].trim(), pair[1].trim()]);
-      localStorage.setItem(name, JSON.stringify(cleanedList));
-      loadLists();
+      const name = document.getElementById("list-name").value.trim();
+      if (!name) return alert("Geef je lijst een naam.");
+
+      const pairs = [];
+      const containers = document.querySelectorAll(".word-pair");
+      containers.forEach(c => {
+        const word = c.children[0].value.trim();
+        const translation = c.children[2].value.trim();
+        if (word && translation) {
+          pairs.push({ word, translation });
+        }
+      });
+
+      if (pairs.length === 0) return alert("Voeg minstens één woord toe.");
+      localStorage.setItem("learnforming_" + name, JSON.stringify(pairs));
       alert("Lijst opgeslagen!");
+      updateListSelect();
     }
 
-    // Start de quiz
+    function updateListSelect() {
+      const select = document.getElementById("list-select");
+      select.innerHTML = '<option value="">Kies een lijst</option>';
+      for (let key in localStorage) {
+        if (key.startsWith("learnforming_")) {
+          const listName = key.replace("learnforming_", "");
+          const option = document.createElement("option");
+          option.value = listName;
+          option.textContent = listName;
+          select.appendChild(option);
+        }
+      }
+    }
+
+    document.getElementById("list-select").addEventListener("change", function () {
+      const name = this.value;
+      document.getElementById("list-name").value = name;
+      document.getElementById("word-list").innerHTML = "";
+      if (!name) return;
+
+      const list = JSON.parse(localStorage.getItem("learnforming_" + name));
+      list.forEach(pair => addNewInput(pair.word, pair.translation));
+    });
+
+    let quizWords = [];
+    let currentWord = null;
+
     function startQuiz() {
-      const name = listNameInput.value.trim();
-      const language = languageInput.value.trim();
-      if (!name || !localStorage.getItem(name)) return alert("Selecteer een geldige lijst.");
-      if (!language) return alert("Voer een taal in.");
+      const name = document.getElementById("list-select").value;
+      const lang = document.getElementById("language").value.trim();
+      if (!name || !localStorage.getItem("learnforming_" + name)) return alert("Selecteer een geldige lijst.");
+      if (!lang) return alert("Vul een doeltaal in.");
 
-      let list = JSON.parse(localStorage.getItem(name));
-      list = shuffle(list);
-      let index = 0;
+      quizWords = JSON.parse(localStorage.getItem("learnforming_" + name));
+      if (quizWords.length === 0) return alert("De lijst is leeg.");
+      document.getElementById("quiz-section").style.display = "block";
+      document.getElementById("quiz-feedback").textContent = "";
+      nextQuiz(lang);
+    }
 
-      quizArea.innerHTML = `
-        <p id="question"></p>
-        <input type="text" id="answer" placeholder="Jouw antwoord" />
-        <button onclick="checkAnswer()">Controleer</button>
-        <p id="feedback"></p>
-      `;
+    function nextQuiz(lang) {
+      currentWord = quizWords[Math.floor(Math.random() * quizWords.length)];
+      document.getElementById("quiz-question").textContent = `Wat is "${currentWord.word}" in het ${lang}?`;
+      document.getElementById("quiz-answer").value = "";
+    }
 
-      const question = document.getElementById("question");
-      const answer = document.getElementById("answer");
-      const feedback = document.getElementById("feedback");
+    function checkAnswer() {
+      const answer = document.getElementById("quiz-answer").value.trim().toLowerCase();
+      const correct = currentWord.translation.trim().toLowerCase();
+      const feedback = document.getElementById("quiz-feedback");
 
-      function ask() {
-        const [word, translation] = list[index];
-        question.textContent = `Wat is "${word}" in het ${language}?`;
-        answer.value = "";
-        feedback.textContent = "";
+      if (answer === correct) {
+        feedback.textContent = "✅ Goed!";
+      } else {
+        feedback.textContent = `❌ Fout. Het juiste antwoord is "${currentWord.translation}".`;
       }
 
-      window.checkAnswer = function () {
-        const userAnswer = answer.value.trim().toLowerCase();
-        const correct = list[index][1].toLowerCase();
-        if (userAnswer === correct) {
-          feedback.textContent = "✅ Goed!";
-          feedback.className = "correct";
-        } else {
-          feedback.textContent = `❌ Fout. Het juiste antwoord is "${list[index][1]}"`;
-          feedback.className = "wrong";
-        }
-        index = (index + 1) % list.length;
-        setTimeout(ask, 1500);
-      };
-
-      ask();
+      setTimeout(() => {
+        document.getElementById("quiz-feedback").textContent = "";
+        nextQuiz(document.getElementById("language").value.trim());
+      }, 1500);
     }
 
-    // Hulpfunctie: random volgorde
-    function shuffle(array) {
-      return array.sort(() => Math.random() - 0.5);
-    }
-
-    loadLists();
+    // Lijsten in select bij opstarten laden
+    updateListSelect();
   </script>
 </body>
 </html>
