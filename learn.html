@@ -5,145 +5,161 @@
   <title>Learnforming</title>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #1e1e2f;
+      font-family: 'Segoe UI', sans-serif;
+      background: #1e1e2f;
       color: white;
-      padding: 40px;
       text-align: center;
+      padding: 30px;
     }
-    textarea, input, select, button {
-      font-size: 16px;
+    input, select, button, textarea {
+      font-size: 1rem;
       padding: 10px;
       margin: 10px;
-      border-radius: 8px;
+      border-radius: 5px;
       border: none;
     }
     textarea {
-      width: 90%;
+      width: 100%;
       height: 200px;
       resize: vertical;
     }
     button {
-      background-color: #4caf50;
+      background: #4caf50;
       color: white;
       cursor: pointer;
-      transition: 0.3s;
     }
     button:hover {
-      background-color: #45a049;
+      background: #45a049;
     }
-    .hidden {
-      display: none;
+    .correct {
+      color: #00e676;
+    }
+    .wrong {
+      color: #ff1744;
     }
   </style>
 </head>
 <body>
   <h1>Learnforming</h1>
 
-  <div>
-    <input type="text" id="listName" placeholder="Naam van de lijst">
-    <input type="text" id="language" placeholder="Taal (bijv. Frans)">
-    <br>
-    <textarea id="wordInput" placeholder="Typ woorden zoals: hond = chien"></textarea>
-    <br>
-    <button onclick="saveList()">Opslaan</button>
-  </div>
-
-  <hr>
-
-  <div>
-    <select id="listSelector">
-      <option value="">-- Kies een lijst --</option>
-    </select>
-    <button onclick="startQuiz()">Start Quiz</button>
-  </div>
-
-  <div id="quiz" class="hidden">
-    <h2 id="questionText"></h2>
-    <input type="text" id="answerInput" placeholder="Jouw antwoord">
-    <button onclick="checkAnswer()">Beantwoord</button>
-    <p id="feedback"></p>
-  </div>
+  <input type="text" id="list-name" placeholder="Naam van lijst" />
+  <select id="list-select">
+    <option value="" disabled selected>Kies een lijst</option>
+  </select>
+  <br>
+  <textarea id="word-input" placeholder="woord = vertaling"></textarea>
+  <br>
+  <button onclick="saveList()">Opslaan</button>
+  <button onclick="startQuiz()">Start Quiz</button>
+  <br>
+  <input type="text" id="language" placeholder="Taal (bijv. Frans)" />
+  <div id="quiz-area" style="margin-top: 30px;"></div>
 
   <script>
-    let currentList = [];
-    let currentIndex = 0;
-    let currentLanguage = "de taal";
+    const wordInput = document.getElementById("word-input");
+    const listNameInput = document.getElementById("list-name");
+    const listSelect = document.getElementById("list-select");
+    const quizArea = document.getElementById("quiz-area");
+    const languageInput = document.getElementById("language");
 
-    function saveList() {
-      const name = document.getElementById("listName").value.trim();
-      const lines = document.getElementById("wordInput").value.trim().split("\n");
-      if (!name || lines.length === 0) return;
+    // Voeg "=" automatisch toe
+    wordInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (!wordInput.value.endsWith("=")) {
+          wordInput.value += " = ";
+        }
+        wordInput.value += "\n";
+      }
+    });
 
-      const list = {};
-      for (let line of lines) {
-        const [left, right] = line.split("=").map(x => x?.trim());
-        if (left && right) {
-          list[left] = right;
+    // Laden opgeslagen lijsten
+    function loadLists() {
+      listSelect.innerHTML = `<option disabled selected>Kies een lijst</option>`;
+      for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          const option = document.createElement("option");
+          option.value = key;
+          option.textContent = key;
+          listSelect.appendChild(option);
         }
       }
+    }
 
-      const lists = JSON.parse(localStorage.getItem("lists") || "{}");
-      lists[name] = list;
-      localStorage.setItem("lists", JSON.stringify(lists));
-      updateSelector();
+    // Lijst selecteren => woorden tonen
+    listSelect.addEventListener("change", () => {
+      const name = listSelect.value;
+      const list = JSON.parse(localStorage.getItem(name));
+      if (list) {
+        listNameInput.value = name;
+        wordInput.value = list.map(pair => `${pair[0]} = ${pair[1]}`).join("\n");
+      }
+    });
+
+    // Opslaan met filtering van lege regels
+    function saveList() {
+      const name = listNameInput.value.trim();
+      if (!name) return alert("Voer een naam in voor de lijst.");
+      const lines = wordInput.value.split("\n");
+      const list = lines.map(l => l.split("=")).filter(pair => pair.length === 2 && pair[0].trim() && pair[1].trim());
+      const cleanedList = list.map(pair => [pair[0].trim(), pair[1].trim()]);
+      localStorage.setItem(name, JSON.stringify(cleanedList));
+      loadLists();
       alert("Lijst opgeslagen!");
     }
 
-    function updateSelector() {
-      const selector = document.getElementById("listSelector");
-      const lists = JSON.parse(localStorage.getItem("lists") || "{}");
-      selector.innerHTML = `<option value="">-- Kies een lijst --</option>`;
-      for (let name in lists) {
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        selector.appendChild(option);
-      }
-    }
-
+    // Start de quiz
     function startQuiz() {
-      const name = document.getElementById("listSelector").value;
-      const lists = JSON.parse(localStorage.getItem("lists") || "{}");
-      currentList = Object.entries(lists[name] || {});
-      if (currentList.length === 0) return;
+      const name = listNameInput.value.trim();
+      const language = languageInput.value.trim();
+      if (!name || !localStorage.getItem(name)) return alert("Selecteer een geldige lijst.");
+      if (!language) return alert("Voer een taal in.");
 
-      // Laad lijst in tekstvak en veld
-      document.getElementById("wordInput").value = currentList.map(([k, v]) => `${k} = ${v}`).join("\n");
-      document.getElementById("listName").value = name;
+      let list = JSON.parse(localStorage.getItem(name));
+      list = shuffle(list);
+      let index = 0;
 
-      // Laad taal of gebruik standaard
-      currentLanguage = document.getElementById("language").value.trim() || "de taal";
+      quizArea.innerHTML = `
+        <p id="question"></p>
+        <input type="text" id="answer" placeholder="Jouw antwoord" />
+        <button onclick="checkAnswer()">Controleer</button>
+        <p id="feedback"></p>
+      `;
 
-      document.getElementById("quiz").classList.remove("hidden");
-      nextQuestion();
-    }
-
-    function nextQuestion() {
-      const random = Math.floor(Math.random() * currentList.length);
-      currentIndex = random;
-      const [word] = currentList[currentIndex];
-      document.getElementById("questionText").textContent = `Wat is "${word}" in het ${currentLanguage}?`;
-      document.getElementById("answerInput").value = "";
-      document.getElementById("feedback").textContent = "";
-    }
-
-    function checkAnswer() {
-      const userAnswer = document.getElementById("answerInput").value.trim().toLowerCase();
-      const correctAnswer = currentList[currentIndex][1].toLowerCase();
+      const question = document.getElementById("question");
+      const answer = document.getElementById("answer");
       const feedback = document.getElementById("feedback");
-      if (userAnswer === correctAnswer) {
-        feedback.textContent = "✅ Correct!";
-        feedback.style.color = "lightgreen";
-      } else {
-        feedback.textContent = `❌ Fout! Het juiste antwoord is "${currentList[currentIndex][1]}"`;
-        feedback.style.color = "tomato";
+
+      function ask() {
+        const [word, translation] = list[index];
+        question.textContent = `Wat is "${word}" in het ${language}?`;
+        answer.value = "";
+        feedback.textContent = "";
       }
-      setTimeout(nextQuestion, 2000);
+
+      window.checkAnswer = function () {
+        const userAnswer = answer.value.trim().toLowerCase();
+        const correct = list[index][1].toLowerCase();
+        if (userAnswer === correct) {
+          feedback.textContent = "✅ Goed!";
+          feedback.className = "correct";
+        } else {
+          feedback.textContent = `❌ Fout. Het juiste antwoord is "${list[index][1]}"`;
+          feedback.className = "wrong";
+        }
+        index = (index + 1) % list.length;
+        setTimeout(ask, 1500);
+      };
+
+      ask();
     }
 
-    // Initialiseer selector bij laden
-    updateSelector();
+    // Hulpfunctie: random volgorde
+    function shuffle(array) {
+      return array.sort(() => Math.random() - 0.5);
+    }
+
+    loadLists();
   </script>
 </body>
 </html>
