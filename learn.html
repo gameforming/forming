@@ -1,150 +1,305 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
   <meta charset="UTF-8" />
-  <title>Learnforming</title>
+  <title>Learnforming - Woorden leren</title>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, sans-serif;
-      background-color: #f4f4f4;
-      color: #333;
-      text-align: center;
-      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #1e1e2f;
+      color: white;
+      margin: 0; padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      gap: 20px;
     }
-    input, button, textarea, select {
-      padding: 10px;
+    h1 {
+      margin: 0 0 10px 0;
+      user-select: none;
+    }
+    input, select, button {
+      font-size: 16px;
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+    }
+    input, select {
       margin: 5px;
+      width: 200px;
+    }
+    button {
+      background-color: #4caf50;
+      color: white;
+      cursor: pointer;
+      margin: 5px;
+      min-width: 130px;
+      transition: background-color 0.3s;
+      user-select: none;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #word-list {
+      background: #2e2e4f;
+      padding: 15px;
+      border-radius: 10px;
+      width: 450px;
+      max-height: 250px;
+      overflow-y: auto;
+      box-sizing: border-box;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 5px 0;
+    }
+    .row input {
+      width: 45%;
+    }
+    .row span {
+      user-select: none;
+    }
+    #lists-container {
+      background: #2e2e4f;
+      border-radius: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      width: 450px;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    #exercise {
+      background: #2e2e4f;
+      border-radius: 10px;
+      padding: 15px;
+      width: 450px;
+      min-height: 120px;
+      box-sizing: border-box;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    #exercise p {
+      font-size: 20px;
+      margin: 0;
+      user-select: none;
+    }
+    #feedback {
+      font-weight: bold;
+      min-height: 24px;
+      user-select: none;
+    }
+    #search-input {
+      width: 440px;
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+      margin-bottom: 10px;
       font-size: 16px;
     }
-    .list {
-      margin-top: 20px;
+    .list-item {
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 5px;
+      user-select: none;
     }
-    .card {
-      background: white;
-      border: 1px solid #ccc;
-      margin: 10px auto;
-      padding: 20px;
-      max-width: 500px;
+    .list-item:hover {
+      background: #4caf50;
     }
   </style>
 </head>
 <body>
-  <h1>Learnforming</h1>
+  <h1>Learnforming - Woorden leren</h1>
 
   <div>
-    <h3>➕ Maak een nieuwe woordenlijst</h3>
-    <input id="list-name" placeholder="Naam van lijst (bijv. Engels)" />
+    <input id="list-name" placeholder="Naam lijst (bijv. Engels)" />
     <select id="list-language">
       <option value="Engels">Engels</option>
       <option value="Frans">Frans</option>
       <option value="Duits">Duits</option>
       <option value="Spaans">Spaans</option>
-      <option value="Italiaans">Italiaans</option>
-    </select><br>
-    <textarea id="list-content" placeholder="Voorbeeld:\nhuis=house\ntafel=table" rows="5" cols="30"></textarea><br>
+    </select>
+    <button onclick="addRow()">+ Voeg woord toe</button>
     <button onclick="saveList()">Lijst opslaan</button>
   </div>
 
-  <div class="list">
-    <h3>🔍 Zoek een lijst</h3>
-    <input id="search" placeholder="Bijv. engels" oninput="showLists()" />
-    <div id="lists"></div>
+  <div id="word-list">
+    <div class="row">
+      <input placeholder="Nederlands" class="nl" />
+      <span>=</span>
+      <input placeholder="Vertaling" class="en" />
+    </div>
   </div>
 
-  <div class="card" id="quiz" style="display:none;">
-    <h3 id="question">Vraag</h3>
-    <input id="answer" placeholder="Jouw antwoord" />
-    <button onclick="checkAnswer()">Check</button>
-    <p id="feedback"></p>
+  <hr style="width: 480px; border-color: #444;" />
+
+  <input type="text" id="search-input" placeholder="Zoek lijsten..." oninput="showLists()" />
+  <div id="lists-container"></div>
+
+  <hr style="width: 480px; border-color: #444;" />
+
+  <div id="exercise">
+    <p id="question"></p>
+    <input id="answer-input" placeholder="Typ je antwoord..." autocomplete="off" />
+    <div id="feedback"></div>
+    <button onclick="nextQuestion()">Volgende</button>
+    <button onclick="stopExercise()">Stoppen</button>
   </div>
 
-  <script>
-    let currentList = [];
-    let currentIndex = 0;
-    let currentLanguage = "Engels";
+<script>
+  function addRow() {
+    const container = document.getElementById("word-list");
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `
+      <input placeholder="Nederlands" class="nl" />
+      <span>=</span>
+      <input placeholder="Vertaling" class="en" />
+    `;
+    container.appendChild(row);
+  }
 
-    function saveList() {
-      const name = document.getElementById("list-name").value.trim();
-      const content = document.getElementById("list-content").value.trim();
-      const language = document.getElementById("list-language").value;
+  function saveList() {
+    const nameInput = document.getElementById("list-name");
+    const languageSelect = document.getElementById("list-language");
+    const name = nameInput.value.trim();
+    const language = languageSelect.value;
 
-      if (!name || !content) return alert("Vul alles in!");
-
-      const pairs = content.split('\n').map(line => {
-        const [nl, en] = line.split('=').map(x => x.trim());
-        return { nl, en };
-      });
-
-      const listData = {
-        language: language,
-        words: pairs
-      };
-
-      localStorage.setItem("learn_" + name.toLowerCase(), JSON.stringify(listData));
-      alert("Lijst opgeslagen!");
-      document.getElementById("list-name").value = "";
-      document.getElementById("list-content").value = "";
-      showLists();
+    if (!name) {
+      alert("Geef de lijst een naam!");
+      return;
     }
 
-    function showLists() {
-      const search = document.getElementById("search").value.toLowerCase();
-      const listsDiv = document.getElementById("lists");
-      listsDiv.innerHTML = "";
+    const nlWords = [...document.querySelectorAll(".nl")].map(i => i.value.trim());
+    const enWords = [...document.querySelectorAll(".en")].map(i => i.value.trim());
 
-      for (let key in localStorage) {
-        if (key.startsWith("learn_") && key.includes(search)) {
-          const name = key.replace("learn_", "");
-          const btn = document.createElement("button");
-          btn.textContent = name;
-          btn.onclick = () => startQuiz(name);
-          listsDiv.appendChild(btn);
-        }
-      }
+    if (nlWords.some(w => w === "") || enWords.some(w => w === "")) {
+      alert("Vul alle woorden in!");
+      return;
     }
 
-    function startQuiz(name) {
-      const data = JSON.parse(localStorage.getItem("learn_" + name));
-      currentList = shuffle([...data.words]);
-      currentLanguage = data.language;
-      currentIndex = 0;
-      document.getElementById("quiz").style.display = "block";
-      nextQuestion();
-    }
+    const pairs = nlWords.map((nl, i) => ({ nl, en: enWords[i] }));
+    const listData = { language, words: pairs };
+    localStorage.setItem("learn_" + name.toLowerCase(), JSON.stringify(listData));
+    alert("Lijst opgeslagen!");
+    nameInput.value = "";
+    languageSelect.value = "Engels";
 
-    function nextQuestion() {
-      if (currentList.length === 0) return;
-      const pair = currentList[currentIndex];
-      document.getElementById("question").textContent = `Wat is "${pair.nl}" in het ${currentLanguage}?`;
-      document.getElementById("answer").value = "";
-      document.getElementById("feedback").textContent = "";
-    }
-
-    function checkAnswer() {
-      const userInput = document.getElementById("answer").value.trim().toLowerCase();
-      const correct = currentList[currentIndex].en.toLowerCase();
-
-      if (userInput === correct) {
-        document.getElementById("feedback").textContent = "✅ Goed!";
-      } else {
-        document.getElementById("feedback").textContent = `❌ Fout! Antwoord: ${correct}`;
-      }
-
-      setTimeout(() => {
-        currentIndex = (currentIndex + 1) % currentList.length;
-        nextQuestion();
-      }, 1500);
-    }
-
-    function shuffle(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }
+    // reset woordenlijst
+    const wordList = document.getElementById("word-list");
+    wordList.innerHTML = '';
+    addRow();
 
     showLists();
-  </script>
+  }
+
+  function showLists() {
+    const container = document.getElementById("lists-container");
+    const searchTerm = document.getElementById("search-input").value.toLowerCase();
+    container.innerHTML = "";
+
+    const keys = Object.keys(localStorage).filter(k => k.startsWith("learn_"));
+    const filtered = keys.filter(k => k.replace("learn_", "").includes(searchTerm));
+
+    if (filtered.length === 0) {
+      container.textContent = "Geen lijsten gevonden.";
+      return;
+    }
+
+    filtered.forEach(key => {
+      const listName = key.replace("learn_", "");
+      const data = JSON.parse(localStorage.getItem(key));
+      const div = document.createElement("div");
+      div.className = "list-item";
+      div.textContent = `${listName} (${data.language})`;
+      div.onclick = () => startExercise(key);
+      container.appendChild(div);
+    });
+  }
+
+  let currentExercise = null;
+  let currentIndex = 0;
+  let shuffledIndexes = [];
+
+  function startExercise(key) {
+    currentExercise = JSON.parse(localStorage.getItem(key));
+    if (!currentExercise || !currentExercise.words.length) {
+      alert("Lijst is leeg!");
+      return;
+    }
+    currentIndex = 0;
+    shuffledIndexes = shuffle(Array.from(currentExercise.words.keys()));
+
+    document.getElementById("exercise").style.display = "flex";
+    document.getElementById("feedback").textContent = "";
+    document.getElementById("answer-input").value = "";
+    document.getElementById("answer-input").focus();
+    showQuestion();
+  }
+
+  function showQuestion() {
+    if (!currentExercise) return;
+    const wordObj = currentExercise.words[shuffledIndexes[currentIndex]];
+    const lang = currentExercise.language;
+    // Vraag: Wat is [nl woord] in [taal]?
+    document.getElementById("question").textContent = `Wat is "${wordObj.nl}" in het ${lang}?`;
+    document.getElementById("answer-input").value = "";
+    document.getElementById("feedback").textContent = "";
+    document.getElementById("answer-input").focus();
+  }
+
+  document.getElementById("answer-input").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      checkAnswer();
+    }
+  });
+
+  function checkAnswer() {
+    const input = document.getElementById("answer-input").value.trim().toLowerCase();
+    if (!input) return;
+    const wordObj = currentExercise.words[shuffledIndexes[currentIndex]];
+    const correct = wordObj.en.toLowerCase();
+
+    if (input === correct) {
+      document.getElementById("feedback").textContent = "Goed! 🎉";
+      nextQuestion();
+    } else {
+      document.getElementById("feedback").textContent = `Fout! Het juiste antwoord is: ${wordObj.en}`;
+    }
+  }
+
+  function nextQuestion() {
+    if (!currentExercise) return;
+    currentIndex++;
+    if (currentIndex >= shuffledIndexes.length) {
+      // Herstart de oefening oneindig
+      shuffledIndexes = shuffle(Array.from(currentExercise.words.keys()));
+      currentIndex = 0;
+    }
+    showQuestion();
+  }
+
+  function stopExercise() {
+    currentExercise = null;
+    document.getElementById("exercise").style.display = "none";
+  }
+
+  function shuffle(array) {
+    for(let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  // Init
+  addRow();
+  showLists();
+</script>
 </body>
 </html>
