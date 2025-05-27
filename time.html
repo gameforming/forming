@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Timeforming - Speedrun Timer & Stopwatch</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #222;
+    color: white;
+    text-align: center;
+    padding: 40px 20px;
+    margin: 0;
+  }
+  #backButton {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: #4caf50;
+    border: none;
+    color: white;
+    padding: 8px 15px;
+    font-size: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s;
+  }
+  #backButton:hover {
+    background: #45a049;
+  }
+  h1 {
+    margin-bottom: 20px;
+  }
+  .section {
+    margin-bottom: 30px;
+    background: #333;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  button {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 10px 5px 0 5px;
+    user-select: none;
+    transition: background-color 0.3s;
+  }
+  button:hover {
+    background-color: #45a049;
+  }
+  input[type="number"] {
+    width: 80px;
+    font-size: 18px;
+    padding: 5px;
+    border-radius: 6px;
+    border: none;
+    text-align: center;
+    margin-left: 5px;
+  }
+  #stopwatchDisplay, #timerDisplay {
+    font-size: 48px;
+    font-weight: bold;
+    margin: 10px 0 0 0;
+    user-select: none;
+  }
+  #runsList {
+    max-width: 400px;
+    margin: 20px auto 0 auto;
+    text-align: left;
+    background: #111;
+    padding: 15px;
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  #runsList h2 {
+    margin-top: 0;
+  }
+  #runsList ul {
+    padding-left: 20px;
+  }
+  #runsList li {
+    margin-bottom: 6px;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<button id="backButton" onclick="window.location.href='index.html'">Back to menu</button>
+
+<h1>Timeforming - Speedrun Timer & Stopwatch</h1>
+
+<div class="section" id="stopwatchSection">
+  <h2>Stopwatch</h2>
+  <div id="stopwatchDisplay">00:00.000</div>
+  <button id="startStopwatchBtn">Start</button>
+  <button id="pauseStopwatchBtn" disabled>Pause</button>
+  <button id="resetStopwatchBtn">Reset</button>
+</div>
+
+<div class="section" id="timerSection">
+  <h2>Timer with delayed start</h2>
+  <label for="delayInput">Delay before start (seconds): </label>
+  <input type="number" id="delayInput" min="0" max="3600" step="1" value="3" />
+  <div id="timerDisplay">00:00.000</div>
+  <button id="startTimerBtn">Start Timer</button>
+  <button id="pauseTimerBtn" disabled>Pause</button>
+  <button id="resetTimerBtn">Reset</button>
+</div>
+
+<div class="section" id="runsList">
+  <h2>Saved Runs</h2>
+  <ul id="runsUl"></ul>
+  <button id="clearRunsBtn">Clear All Runs</button>
+</div>
+
+<script>
+(() => {
+  // Stopwatch variables
+  let stopwatchStart = 0;
+  let stopwatchElapsed = 0;
+  let stopwatchRunning = false;
+  let stopwatchTimer;
+
+  // Timer variables
+  let timerStart = 0;
+  let timerElapsed = 0;
+  let timerRunning = false;
+  let timerTimer;
+  let delay = 3;
+  let delayTimeout;
+
+  // DOM elements
+  const stopwatchDisplay = document.getElementById('stopwatchDisplay');
+  const startStopwatchBtn = document.getElementById('startStopwatchBtn');
+  const pauseStopwatchBtn = document.getElementById('pauseStopwatchBtn');
+  const resetStopwatchBtn = document.getElementById('resetStopwatchBtn');
+
+  const timerDisplay = document.getElementById('timerDisplay');
+  const delayInput = document.getElementById('delayInput');
+  const startTimerBtn = document.getElementById('startTimerBtn');
+  const pauseTimerBtn = document.getElementById('pauseTimerBtn');
+  const resetTimerBtn = document.getElementById('resetTimerBtn');
+
+  const runsUl = document.getElementById('runsUl');
+  const clearRunsBtn = document.getElementById('clearRunsBtn');
+
+  // Utility function to format time ms to mm:ss.mmm
+  function formatTime(ms) {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    const milliseconds = ms % 1000;
+    return (
+      String(minutes).padStart(2, '0') +
+      ':' +
+      String(seconds).padStart(2, '0') +
+      '.' +
+      String(milliseconds).padStart(3, '0')
+    );
+  }
+
+  // --- Stopwatch functions ---
+
+  function updateStopwatch() {
+    if (!stopwatchRunning) return;
+    stopwatchElapsed = Date.now() - stopwatchStart;
+    stopwatchDisplay.textContent = formatTime(stopwatchElapsed);
+    // Save to localStorage
+    localStorage.setItem('timeforming_stopwatch', stopwatchElapsed);
+    stopwatchTimer = requestAnimationFrame(updateStopwatch);
+  }
+
+  startStopwatchBtn.addEventListener('click', () => {
+    if (!stopwatchRunning) {
+      stopwatchStart = Date.now() - stopwatchElapsed;
+      stopwatchRunning = true;
+      updateStopwatch();
+      startStopwatchBtn.disabled = true;
+      pauseStopwatchBtn.disabled = false;
+    }
+  });
+
+  pauseStopwatchBtn.addEventListener('click', () => {
+    if (stopwatchRunning) {
+      stopwatchRunning = false;
+      cancelAnimationFrame(stopwatchTimer);
+      startStopwatchBtn.disabled = false;
+      pauseStopwatchBtn.disabled = true;
+      saveRun('Stopwatch', stopwatchElapsed);
+    }
+  });
+
+  resetStopwatchBtn.addEventListener('click', () => {
+    stopwatchRunning = false;
+    cancelAnimationFrame(stopwatchTimer);
+    stopwatchElapsed = 0;
+    stopwatchDisplay.textContent = '00:00.000';
+    startStopwatchBtn.disabled = false;
+    pauseStopwatchBtn.disabled = true;
+    localStorage.removeItem('timeforming_stopwatch');
+  });
+
+  // --- Timer functions ---
+
+  function updateTimer() {
+    if (!timerRunning) return;
+    timerElapsed = Date.now() - timerStart;
+    timerDisplay.textContent = formatTime(timerElapsed);
+    // Save to localStorage
+    localStorage.setItem('timeforming_timer', timerElapsed);
+    timerTimer = requestAnimationFrame(updateTimer);
+  }
+
+  startTimerBtn.addEventListener('click', () => {
+    if (timerRunning) return;
+
+    delay = parseInt(delayInput.value, 10);
+    if (isNaN(delay) || delay < 0) delay = 0;
+
+    timerDisplay.textContent = `Starting in ${delay}...`;
+    startTimerBtn.disabled = true;
+    pauseTimerBtn.disabled = true;
+    resetTimerBtn.disabled = true;
+    
+    delayTimeout = setTimeout(() => {
+      timerStart = Date.now();
+      timerRunning = true;
+      updateTimer();
+      startTimerBtn.disabled = true;
+      pauseTimerBtn.disabled = false;
+      resetTimerBtn.disabled = false;
+    }, delay * 1000);
+  });
+
+  pauseTimerBtn.addEventListener('click', () => {
+    if (timerRunning) {
+      timerRunning = false;
+      cancelAnimationFrame(timerTimer);
+      startTimerBtn.disabled = false;
+      pauseTimerBtn.disabled = true;
+      saveRun('Timer', timerElapsed);
+    }
+  });
+
+  resetTimerBtn.addEventListener('click', () => {
+    timerRunning = false;
+    cancelAnimationFrame(timerTimer);
+    clearTimeout(delayTimeout);
+    timerElapsed = 0;
+    timerDisplay.textContent = '00:00.000';
+    startTimerBtn.disabled = false;
+    pauseTimerBtn.disabled = true;
+    resetTimerBtn.disabled = false;
+    localStorage.removeItem('timeforming_timer');
+  });
+
+  // --- Runs storage and display ---
+
+  function loadRuns() {
+    const runs = JSON.parse(localStorage.getItem('timeforming_runs') || '[]');
+    runsUl.innerHTML = '';
+    if (runs.length === 0) {
+      runsUl.innerHTML = '<li>No saved runs yet.</li>';
+      return;
+    }
+    runs.forEach((run, i) => {
+      const li = document.createElement('li');
+      li.textContent = `${run.type}: ${formatTime(run.time)} (Saved: ${new Date(run.saved).toLocaleString()})`;
+      runsUl.appendChild(li);
+    });
+  }
+
+  function saveRun(type, time) {
+    if (time <= 0) return; // don't save zero times
+    const runs = JSON.parse(localStorage.getItem('timeforming_runs') || '[]');
+    runs.push({ type, time, saved: Date.now() });
+    localStorage.setItem('timeforming_runs', JSON.stringify(runs));
+    loadRuns();
+  }
+
+  clearRunsBtn.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all saved runs?')) {
+      localStorage.removeItem('timeforming_runs');
+      loadRuns();
+    }
+  });
+
+  // --- Load saved states on page load ---
+
+  function loadSavedState() {
+    // Load stopwatch
+    const swTime = parseInt(localStorage.getItem('timeforming_stopwatch'));
+    if (!isNaN(swTime) && swTime > 0) {
+      stopwatchElapsed = swTime;
+      stopwatchDisplay.textContent = formatTime(stopwatchElapsed);
+      startStopwatchBtn.disabled = false;
+      pauseStopwatchBtn.disabled = true;
+    }
+
+    // Load timer
+    const tTime = parseInt(localStorage.getItem('timeforming_timer'));
+    if (!isNaN(tTime) && tTime > 0) {
+      timerElapsed = tTime;
+      timerDisplay.textContent = formatTime(timerElapsed);
+      startTimerBtn.disabled = false;
+      pauseTimerBtn.disabled = true;
+      resetTimerBtn.disabled = false;
+    }
+
+    loadRuns();
+  }
+
+  // Run on load
+  loadSavedState();
+
+})();
+</script>
+
+</body>
+</html>
