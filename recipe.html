@@ -100,31 +100,22 @@
       position: absolute;
       top: 10px;
       left: 10px;
-      padding: 8px 14px;
-      font-size: 0.9rem;
-      background-color: #555;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #backButton:hover {
-      background-color: #444;
+      background-color: #ccc;
+      color: black;
     }
   </style>
 </head>
 <body>
 
-  <button id="backButton" onclick="window.location.href='index.html'">Back to homepage</button>
-
+  <button id="backButton" onclick="location.href='index.html'">Back to home</button>
   <h1>Recipeforming</h1>
 
   <input type="text" id="searchInput" placeholder="Search recipes..." />
 
   <form id="newRecipeForm">
-    <h2>Add New Recipe</h2>
+    <h2>Add new recipe</h2>
     <label for="titleInput">Title</label>
-    <input type="text" id="titleInput" placeholder="E.g. Pancakes" required />
+    <input type="text" id="titleInput" placeholder="e.g. Pancakes" required />
 
     <label for="ingredientsInput">Ingredients (one per line)</label>
     <textarea id="ingredientsInput" placeholder="Milk&#10;Flour&#10;Eggs" required></textarea>
@@ -139,7 +130,7 @@
 
   <!-- Edit form hidden initially -->
   <form id="editRecipeForm" style="display:none;">
-    <h2>Edit Recipe</h2>
+    <h2>Edit recipe</h2>
     <label for="editTitleInput">Title</label>
     <input type="text" id="editTitleInput" required />
 
@@ -160,7 +151,6 @@
     const searchInput = document.getElementById('searchInput');
 
     let recipes = JSON.parse(localStorage.getItem('recipes')) || [];
-
     let editIndex = null;
 
     function renderRecipes(filter = '') {
