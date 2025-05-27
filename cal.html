@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<title>Calculatorforming - Geavanceerd</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 360px;
+    margin: 40px auto;
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px #ccc;
+  }
+  #display {
+    width: 100%;
+    height: 50px;
+    font-size: 28px;
+    text-align: right;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    background: white;
+    box-sizing: border-box;
+  }
+  button {
+    width: 20%;
+    height: 50px;
+    margin: 5px 2%;
+    font-size: 20px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 3px #999;
+    transition: background 0.2s;
+  }
+  button:active {
+    box-shadow: none;
+    transform: translateY(3px);
+  }
+  button.operator {
+    background-color: #f0ad4e;
+    color: white;
+  }
+  button.equals {
+    background-color: #5cb85c;
+    color: white;
+  }
+  button.clear {
+    background-color: #d9534f;
+    color: white;
+    width: 44%;
+  }
+  button.func {
+    background-color: #0275d8;
+    color: white;
+  }
+</style>
+</head>
+<body>
+
+<input type="text" id="display" value="0" readonly />
+
+<div>
+  <button class="func" onclick="clearDisplay()">C</button>
+  <button class="func" onclick="backspace()">←</button>
+  <button class="func" onclick="toggleSign()">±</button>
+  <button class="func" onclick="press('%')">%</button>
+  <button class="operator" onclick="press('(')">(</button>
+</div>
+<div>
+  <button onclick="press('7')">7</button>
+  <button onclick="press('8')">8</button>
+  <button onclick="press('9')">9</button>
+  <button class="operator" onclick="press(')')">)</button>
+  <button class="operator" onclick="press('/')">÷</button>
+</div>
+<div>
+  <button onclick="press('4')">4</button>
+  <button onclick="press('5')">5</button>
+  <button onclick="press('6')">6</button>
+  <button class="operator" onclick="press('^')">^</button>
+  <button class="operator" onclick="press('*')">×</button>
+</div>
+<div>
+  <button onclick="press('1')">1</button>
+  <button onclick="press('2')">2</button>
+  <button onclick="press('3')">3</button>
+  <button class="func" onclick="sqrt()">√</button>
+  <button class="operator" onclick="press('-')">−</button>
+</div>
+<div>
+  <button onclick="press('0')">0</button>
+  <button onclick="press('.')">,</button>
+  <button class="equals" onclick="calculate()">=</button>
+  <button class="operator" onclick="press('+')">+</button>
+</div>
+
+<script>
+  let expression = "";
+
+  function press(char) {
+    if (char === ',') char = '.'; // comma vervangen door punt
+    // voorkom opeenvolgende operatoren behalve minus of haakjes
+    const lastChar = expression.slice(-1);
+    const ops = '+-*/^%';
+    if (ops.includes(char)) {
+      if (expression === "" && char !== '-') return; // niet starten met operator behalve -
+      if (ops.includes(lastChar)) {
+        expression = expression.slice(0, -1) + char;
+        updateDisplay();
+        return;
+      }
+    }
+    if (char === '.' && expression.slice(-1) === '.') return;
+
+    expression += char;
+    updateDisplay();
+  }
+
+  function updateDisplay() {
+    if (expression === "") {
+      document.getElementById('display').value = "0";
+    } else {
+      document.getElementById('display').value = expression.replace(/\./g, ',');
+    }
+  }
+
+  function clearDisplay() {
+    expression = "";
+    updateDisplay();
+  }
+
+  function backspace() {
+    expression = expression.slice(0, -1);
+    updateDisplay();
+  }
+
+  function toggleSign() {
+    if (expression === "") return;
+    // probeer laatste getal negatief maken / omkeren
+    // simpelste: voeg '-' toe vooraan als nog niet
+    if (expression.startsWith('-')) {
+      expression = expression.substring(1);
+    } else {
+      expression = '-' + expression;
+    }
+    updateDisplay();
+  }
+
+  function sqrt() {
+    if (expression === "") return;
+    expression = "Math.sqrt(" + expression + ")";
+    updateDisplay();
+  }
+
+  function calculate() {
+    if (expression === "") return;
+    try {
+      // maak string geschikt voor JS-eval
+      let exp = expression
+        .replace(/÷/g, '/')
+        .replace(/×/g, '*')
+        .replace(/,/g, '.')
+        .replace(/\^/g, '**')
+        .replace(/%/g, '*0.01');
+
+      // eval is hier ok, maar kan beter met parser
+      let result = eval(exp);
+
+      if (!isFinite(result)) throw "Error";
+
+      expression = result.toString();
+      updateDisplay();
+    } catch {
+      expression = "";
+      document.getElementById('display').value = "Error";
+    }
+  }
+</script>
+
+</body>
+</html>
