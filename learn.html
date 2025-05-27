@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Learnforming</title>
   <style>
     body {
@@ -10,6 +10,7 @@
       color: white;
       padding: 20px;
       text-align: center;
+      position: relative;
     }
     h1 {
       margin-bottom: 20px;
@@ -46,9 +47,24 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      z-index: 10;
     }
     #back-button:hover {
       background-color: #555;
+    }
+    #delete-button {
+      background-color: #a33;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      margin-left: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    #delete-button:hover {
+      background-color: #c55;
     }
   </style>
 </head>
@@ -60,6 +76,8 @@
   <input type="text" id="list-name" placeholder="Naam van woordenlijst" />
   <button onclick="addNewInput()">Voeg woord toe</button>
   <button onclick="saveList()">Opslaan</button>
+  <button id="delete-button" onclick="deleteList()">Verwijder lijst</button>
+
   <div id="word-list"></div>
 
   <hr style="margin-top: 30px;" />
@@ -80,6 +98,7 @@
 
   <script>
     let currentList = [];
+    let currentListName = "";
 
     function addNewInput(word = "", translation = "") {
       const container = document.createElement("div");
@@ -88,6 +107,7 @@
       const wordInput = document.createElement("input");
       wordInput.placeholder = "woord";
       wordInput.value = word;
+      wordInput.addEventListener("input", autoSave);
 
       const equals = document.createElement("span");
       equals.textContent = " = ";
@@ -95,6 +115,7 @@
       const translationInput = document.createElement("input");
       translationInput.placeholder = "vertaling";
       translationInput.value = translation;
+      translationInput.addEventListener("input", autoSave);
 
       container.appendChild(wordInput);
       container.appendChild(equals);
@@ -104,7 +125,8 @@
     }
 
     function saveList() {
-      const name = document.getElementById("list-name").value.trim();
+      const nameInput = document.getElementById("list-name");
+      const name = nameInput.value.trim();
       if (!name) return alert("Geef je lijst een naam.");
 
       const pairs = [];
@@ -117,14 +139,55 @@
         }
       });
 
-      if (pairs.length === 0) return alert("Voeg minstens één woord toe.");
+      if (pairs.length === 0) {
+        // Als er geen woorden zijn, verwijderen we de lijst als die bestond
+        if (localStorage.getItem("learnforming_" + name)) {
+          localStorage.removeItem("learnforming_" + name);
+          alert("Lijst was leeg en is verwijderd.");
+          updateListSelect();
+          clearInputs();
+          return;
+        }
+        return alert("Voeg minstens één woord toe.");
+      }
+
       localStorage.setItem("learnforming_" + name, JSON.stringify(pairs));
+      currentListName = name;
+      localStorage.setItem("learnforming_lastList", currentListName);
       alert("Lijst opgeslagen!");
+      updateListSelect();
+      nameInput.value = name; // Zorg dat naam klopt
+    }
+
+    function autoSave() {
+      // Automatisch opslaan als naam bekend is
+      const nameInput = document.getElementById("list-name");
+      const name = nameInput.value.trim();
+      if (!name) return; // Zonder naam niet opslaan
+
+      const pairs = [];
+      const containers = document.querySelectorAll(".word-pair");
+      containers.forEach(c => {
+        const word = c.children[0].value.trim();
+        const translation = c.children[2].value.trim();
+        if (word && translation) {
+          pairs.push({ word, translation });
+        }
+      });
+
+      if (pairs.length === 0) {
+        localStorage.removeItem("learnforming_" + name);
+      } else {
+        localStorage.setItem("learnforming_" + name, JSON.stringify(pairs));
+      }
+      currentListName = name;
+      localStorage.setItem("learnforming_lastList", currentListName);
       updateListSelect();
     }
 
     function updateListSelect() {
       const select = document.getElementById("list-select");
+      const oldValue = select.value;
       select.innerHTML = '<option value="">Kies een lijst</option>';
       for (let key in localStorage) {
         if (key.startsWith("learnforming_")) {
@@ -135,17 +198,33 @@
           select.appendChild(option);
         }
       }
+      // Herstel selectie als nog geldig
+      if (oldValue && document.querySelector(`#list-select option[value="${oldValue}"]`)) {
+        select.value = oldValue;
+      } else {
+        select.value = "";
+      }
     }
 
     document.getElementById("list-select").addEventListener("change", function () {
       const name = this.value;
+      currentListName = name;
       document.getElementById("list-name").value = name;
       document.getElementById("word-list").innerHTML = "";
-      if (!name) return;
+      if (!name) {
+        clearInputs();
+        return;
+      }
 
       const list = JSON.parse(localStorage.getItem("learnforming_" + name));
       list.forEach(pair => addNewInput(pair.word, pair.translation));
+      localStorage.setItem("learnforming_lastList", name);
     });
+
+    function clearInputs() {
+      document.getElementById("list-name").value = "";
+      document.getElementById("word-list").innerHTML = "";
+    }
 
     let quizWords = [];
     let currentWord = null;
@@ -186,7 +265,34 @@
       }, 1500);
     }
 
-    updateListSelect();
+    function deleteList() {
+      if (!currentListName) {
+        alert("Er is geen lijst geselecteerd om te verwijderen.");
+        return;
+      }
+      if (confirm(`Weet je zeker dat je de lijst "${currentListName}" wilt verwijderen?`)) {
+        localStorage.removeItem("learnforming_" + currentListName);
+        if (localStorage.getItem("learnforming_lastList") === currentListName) {
+          localStorage.removeItem("learnforming_lastList");
+        }
+        alert(`Lijst "${currentListName}" verwijderd.`);
+        currentListName = "";
+        clearInputs();
+        updateListSelect();
+        document.getElementById("list-select").value = "";
+      }
+    }
+
+    // Bij laden: open laatst gebruikte lijst
+    window.onload = () => {
+      updateListSelect();
+      const last = localStorage.getItem("learnforming_lastList");
+      if (last && localStorage.getItem("learnforming_" + last)) {
+        document.getElementById("list-select").value = last;
+        const event = new Event('change');
+        document.getElementById("list-select").dispatchEvent(event);
+      }
+    };
   </script>
 </body>
 </html>
