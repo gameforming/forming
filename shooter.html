@@ -3,17 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pixel Shooter Game</title>
+  <title>Pixel Shooter</title>
   <link rel="stylesheet" href="shooter.css" />
 </head>
 <body>
-  <!-- Terug naar home knop -->
-  <button id="btnHome">Terug naar home</button>
+  <div id="mainMenu">
+    <h1>Pixel Shooter</h1>
+    <button id="startBattleBtn">Battle starten</button>
+    <button id="selectSkinBtn">Skin kiezen</button>
+    <button id="levelBtn">Level systeem</button>
+    <button id="backHomeBtn">Terug naar home</button>
+  </div>
 
-  <!-- Het speelveld -->
-  <canvas id="gameCanvas" width="800" height="450"></canvas>
+  <div id="skinMenu" style="display:none;">
+    <h2>Kies je skin</h2>
+    <button class="skinBtn" data-skin="0">Skin 1</button>
+    <button class="skinBtn" data-skin="1">Skin 2</button>
+    <button class="skinBtn" data-skin="2">Skin 3</button>
+    <button id="closeSkinBtn">Sluit</button>
+  </div>
 
-  <!-- Jouw scripts -->
+  <div id="levelMenu" style="display:none;">
+    <h2>Level systeem (Placeholder)</h2>
+    <p>Hier komt je level info</p>
+    <button id="closeLevelBtn">Sluit</button>
+  </div>
+
+  <canvas id="gameCanvas" width="800" height="400" style="display:none;"></canvas>
+
   <script src="shooter.js"></script>
 </body>
 </html>
