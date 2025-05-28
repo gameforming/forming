@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pixel Shooter Game</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="main-menu" class="screen">
+    <h1>Pixel Shooter</h1>
+    <div id="skin-selection">
+      <p>Kies je skin:</p>
+      <button data-skin="1">Skin 1</button>
+      <button data-skin="2">Skin 2</button>
+      <button data-skin="3">Skin 3</button>
+    </div>
+    <button id="btn-battle">Battle Starten</button>
+  </div>
+
+  <div id="game-screen" class="screen hidden">
+    <canvas id="game-canvas" width="800" height="400"></canvas>
+    <button id="btn-back">Terug naar Menu</button>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
