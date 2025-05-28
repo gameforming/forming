@@ -552,5 +552,376 @@ function stopGame() {
 document.getElementById("btnHome").addEventListener("click", () => {
   window.location.href = "gameforming.html";
 });
+// Extra variabelen voor HUD
+let playerHealth = 100;
+let ammo = 10;
+let score = 0;
+const maxAmmo = 10;
+let reloading = false;
+
+// Reloadfunctie
+function reload() {
+  if (!reloading && ammo < maxAmmo) {
+    reloading = true;
+    setTimeout(() => {
+      ammo = maxAmmo;
+      reloading = false;
+    }, 1000); // 1 seconde reloadtijd
+  }
+}
+
+// Aangepaste shoot-functie
+function shoot() {
+  if (ammo > 0 && !reloading) {
+    // Maak hier een kogel aan
+    bullets.push({
+      x: player.x + (player.facingRight ? 30 : -10),
+      y: player.y + 15,
+      vx: player.facingRight ? 10 : -10
+    });
+    ammo--;
+  } else if (ammo === 0) {
+    reload();
+  }
+}
+
+// HUD updaten
+function updateHUD() {
+  document.getElementById("health").textContent = "Health: " + playerHealth;
+  document.getElementById("ammo").textContent = "Ammo: " + ammo + (reloading ? " (reloading...)" : "");
+  document.getElementById("score").textContent = "Score: " + score;
+}
+
+// Vijand raakt speler
+function checkPlayerDamage() {
+  enemies.forEach((enemy) => {
+    if (collision(player, enemy)) {
+      playerHealth -= 1;
+      if (playerHealth <= 0) {
+        alert("Game Over!");
+        location.reload();
+      }
+    }
+  });
+}
+
+// Kogels raken vijanden
+function checkEnemyHits() {
+  bullets.forEach((bullet, bIndex) => {
+    enemies.forEach((enemy, eIndex) => {
+      if (collision(bullet, enemy)) {
+        score += 10;
+        enemies.splice(eIndex, 1);
+        bullets.splice(bIndex, 1);
+      }
+    });
+  });
+}
+
+// Voeg dit toe in je game loop:
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Speler tekenen
+  const playerImg = player.direction === "left" ? player.imgLeft : player.img;
+  ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+
+  // Vijanden tekenen
+  for (let e of enemies) {
+    ctx.drawImage(e.img, e.x, e.y, e.width, e.height);
+  }
+
+  // Kogels tekenen
+  for (let b of bullets) {
+    ctx.fillStyle = "yellow";
+    ctx.fillRect(b.x, b.y, 5, 5);
+  }
+
+  // Health bar en score tekenen
+  drawHealthBar(ctx);
+  drawScore(ctx);
+
+  // Alles updaten
+  update();
+
+  // Volgende frame
+  requestAnimationFrame(gameLoop);
+}
+
+
+// Functie om een zombie shooter toe te voegen
+function spawnZombieShooter(x, y) {
+  enemies.push({
+    x,
+    y,
+    width: 30,
+    height: 40,
+    type: "shooter",
+    shootCooldown: Math.random() * 200 + 100
+  });
+}
+
+// Functie voor zombie shooters om te schieten
+function enemyShootLogic() {
+  enemies.forEach(enemy => {
+    if (enemy.type === "shooter") {
+      enemy.shootCooldown--;
+      if (enemy.shootCooldown <= 0) {
+        enemyBullets.push({
+          x: enemy.x + enemy.width / 2,
+          y: enemy.y + enemy.height / 2,
+          vx: player.x > enemy.x ? 5 : -5,
+        });
+        enemy.shootCooldown = Math.random() * 200 + 100;
+      }
+    }
+  });
+}
+
+// Beweeg vijand-kogels en check botsing met speler
+function updateEnemyBullets() {
+  for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    const bullet = enemyBullets[i];
+    bullet.x += bullet.vx;
+
+    // Check hit player
+    if (
+      bullet.x < player.x + player.width &&
+      bullet.x + 5 > player.x &&
+      bullet.y < player.y + player.height &&
+      bullet.y + 5 > player.y
+    ) {
+      playerHealth -= 5;
+      enemyBullets.splice(i, 1);
+      if (playerHealth <= 0) {
+        alert("Game Over!");
+        location.reload();
+      }
+    }
+
+    // Verwijder als uit beeld
+    if (bullet.x < 0 || bullet.x > canvas.width) {
+      enemyBullets.splice(i, 1);
+    }
+  }
+}
+
+// Teken vijand-kogels
+function drawEnemyBullets(ctx) {
+  ctx.fillStyle = "red";
+  enemyBullets.forEach(b => {
+    ctx.fillRect(b.x, b.y, 5, 5);
+  });
+}
+
+// Zorg dat deze functies worden aangeroepen in je bestaande functies:
+// In je update():
+enemyShootLogic();
+updateEnemyBullets();
+
+// In je draw():
+drawEnemyBullets(ctx);
+
+// Voorbeeld spawn van een zombie shooter bij start:
+spawnZombieShooter(600, 250);
+// --- SKINS ---
+let currentSkin = 0;
+const playerSkins = [player1Right, player2Right, player3Right];
+const playerSkinsLeft = [player1Left, player2Left, player3Left];
+
+// Wissel skin met toetsen 1, 2, 3
+document.addEventListener("keydown", (e) => {
+  if (["1", "2", "3"].includes(e.key)) {
+    currentSkin = parseInt(e.key) - 1;
+    player.img = playerSkins[currentSkin];
+    player.imgLeft = playerSkinsLeft[currentSkin];
+  }
+});
+
+// --- HEALTH BAR ---
+function drawHealthBar(ctx) {
+  ctx.fillStyle = "black";
+  ctx.fillRect(20, 20, 104, 14);
+  ctx.fillStyle = "limegreen";
+  ctx.fillRect(22, 22, playerHealth, 10);
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, 20, 104, 14);
+}
+
+// --- SCORE ---
+let killCount = 0;
+
+// Tel kills bij enemy collision
+function updateBullets() {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.x += b.vx;
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j];
+      if (
+        b.x < e.x + e.width &&
+        b.x + 5 > e.x &&
+        b.y < e.y + e.height &&
+        b.y + 5 > e.y
+      ) {
+        enemies.splice(j, 1);
+        bullets.splice(i, 1);
+        killCount++;
+        break;
+      }
+    }
+  }
+}
+
+// Score tekenen
+function drawScore(ctx) {
+  ctx.fillStyle = "white";
+  ctx.font = "16px Arial";
+  ctx.fillText("Kills: " + killCount, canvas.width - 100, 30);
+}
+
+// Voeg toe in je draw():
+// drawHealthBar(ctx);
+// drawScore(ctx);
+// --- Wave systeem ---
+let waveNumber = 1;
+let enemiesPerWave = 5;
+
+function spawnWave() {
+  enemies = [];
+  for (let i = 0; i < enemiesPerWave; i++) {
+    let enemy = {
+      x: Math.random() * (canvas.width - 40),
+      y: Math.random() * (canvas.height / 2),
+      width: 40,
+      height: 40,
+      health: 3 + waveNumber,
+      img: zombieImg,
+      speed: 1 + waveNumber * 0.1
+    };
+    enemies.push(enemy);
+  }
+}
+
+// Roep bij start aan om eerste wave te starten:
+if (enemies.length === 0) spawnWave();
+
+// In je update functie, check of wave klaar is:
+function checkWave() {
+  if (enemies.length === 0) {
+    waveNumber++;
+    enemiesPerWave += 2;
+    spawnWave();
+  }
+}
+
+// --- Ammo & Reload ---
+let ammo = 10;
+const maxAmmo = 10;
+let reloading = false;
+const reloadTime = 2000; // ms
+
+function shoot() {
+  if (ammo > 0 && !reloading) {
+    // je bestaande shoot code hier
+    ammo--;
+    shootSound.play?.();
+  } else if (ammo === 0 && !reloading) {
+    startReload();
+  }
+}
+
+function startReload() {
+  if (!reloading) {
+    reloading = true;
+    setTimeout(() => {
+      ammo = maxAmmo;
+      reloading = false;
+    }, reloadTime);
+  }
+}
+
+// --- Power-ups ---
+let powerUps = [];
+const powerUpTypes = ['health', 'damage', 'speed'];
+const powerUpImgs = {
+  health: healthPowerUpImg,
+  damage: damagePowerUpImg,
+  speed: speedPowerUpImg
+};
+
+function spawnPowerUp() {
+  let type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+  let powerUp = {
+    x: Math.random() * (canvas.width - 30),
+    y: Math.random() * (canvas.height - 30),
+    width: 30,
+    height: 30,
+    type: type,
+    img: powerUpImgs[type]
+  };
+  powerUps.push(powerUp);
+}
+
+function applyPowerUp(type) {
+  if (type === 'health') {
+    player.health = Math.min(player.health + 3, 10);
+  } else if (type === 'damage') {
+    player.damageBoost = 5;
+    setTimeout(() => player.damageBoost = 0, 10000);
+  } else if (type === 'speed') {
+    player.speedBoost = 2;
+    setTimeout(() => player.speedBoost = 0, 10000);
+  }
+}
+
+function checkPowerUps() {
+  for (let i = powerUps.length - 1; i >= 0; i--) {
+    let p = powerUps[i];
+    if (collision(player, p)) {
+      applyPowerUp(p.type);
+      powerUps.splice(i, 1);
+    }
+  }
+}
+
+// --- Skins unlocken ---
+let kills = 0;
+let unlockedSkins = ['default'];
+
+function checkUnlockSkins() {
+  if (kills >= 10 && !unlockedSkins.includes('coolSkin')) {
+    unlockedSkins.push('coolSkin');
+    alert('Je hebt een nieuwe skin vrijgespeeld!');
+  }
+}
+
+// --- Game over ---
+function gameOver() {
+  gameOverSound.play?.();
+  alert('Game over! Je score: ' + kills);
+  player.health = 10;
+  kills = 0;
+  waveNumber = 1;
+  enemiesPerWave = 5;
+  spawnWave();
+}
+
+// --- Geluidseffecten ---
+const shootSound = new Audio('shoot.mp3');
+const hitSound = new Audio('hit.mp3');
+const gameOverSound = new Audio('gameover.mp3');
+
+// Vergeet niet om in je update-loop en game-loop onderstaande functies te integreren:
+// checkWave();
+// checkPowerUps();
+// checkUnlockSkins();
+// check health voor gameOver();
+
+// En in je schietfunctie gebruik maken van deze nieuwe shoot functie.
+// En spawnPowerUp() kun je oproepen bijvoorbeeld na elke wave of random tijd.
+
+
+
 
 
