@@ -1,40 +1,40 @@
+/* Algemene pagina styling */
 body {
   margin: 0;
-  font-family: monospace;
-  background-color: #222;
+  background-color: #222; /* donkere achtergrond */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: white;
-  text-align: center;
-  user-select: none;
 }
 
-.screen {
-  padding: 20px;
+/* Canvas styling */
+#gameCanvas {
+  background-color: #333; /* donkere kleur voor de game achtergrond */
+  margin-top: 60px; /* ruimte onder de knop */
+  border: 3px solid #555;
+  box-shadow: 0 0 10px #000;
 }
 
-.hidden {
-  display: none;
-}
-
-#game-canvas {
-  background-color: #333;
-  border: 3px solid #666;
-  display: block;
-  margin: 20px auto;
-  image-rendering: pixelated;
-}
-
-button {
-  margin: 5px;
-  padding: 10px 15px;
-  font-size: 1rem;
-  cursor: pointer;
-  background-color: #555;
+/* Terug naar home knop styling */
+#btnHome {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  padding: 8px 15px;
+  font-size: 16px;
+  background-color: #444;
+  color: white;
   border: none;
-  color: white;
   border-radius: 5px;
+  cursor: pointer;
+  z-index: 1000;
   transition: background-color 0.3s;
 }
 
-button:hover {
-  background-color: #777;
+#btnHome:hover {
+  background-color: #666;
 }
