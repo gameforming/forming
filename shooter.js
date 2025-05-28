@@ -549,4 +549,8 @@ function stopGame() {
   gameRunning = false;
   stopSpawning();
 }
+document.getElementById("btnHome").addEventListener("click", () => {
+  window.location.href = "gameforming.html";
+});
+
 
