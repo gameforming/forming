@@ -1,1 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Your Kingdom</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+    }
+
+    #topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: #eee;
+      border-bottom: 2px solid #ccc;
+    }
+
+    #resources {
+      font-weight: bold;
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(20, 40px);
+      grid-template-rows: repeat(10, 40px);
+      gap: 2px;
+      padding: 10px;
+    }
+
+    .tile {
+      width: 40px;
+      height: 40px;
+      background-color: green;
+      border: 1px solid #444;
+      cursor: pointer;
+    }
+
+    .house { background-color: #ffff99; }
+    .mine { background-color: #999999; }
+    .lumberjack { background-color: #66cc66; }
+    .farm { background-color: #ffcc66; }
+
+    #menu {
+      position: fixed;
+      background: white;
+      border: 1px solid black;
+      padding: 10px;
+      display: none;
+      z-index: 10;
+    }
+
+    button {
+      margin: 3px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="resources">
+    Wood: 0 | Stone: 0 | Food: 0 | Workers: 0 / 0
+  </div>
+  <button onclick="goHome()">Back to Home</button>
+</div>
+
+<div id="grid"></div>
+
+<div id="menu"></div>
+
+<script>
+  const grid = document.getElementById("grid");
+  const resourcesDisplay = document.getElementById("resources");
+  const menu = document.getElementById("menu");
+
+  let resources = {
+    wood: 0,
+    stone: 0,
+    food: 0,
+    workers: 0,
+    maxWorkers: 0
+  };
+
+  let upgradeCosts = {
+    house: 10,
+    mine: 15,
+    lumberjack: 15,
+    farm: 15
+  };
+
+  const tiles = [];
+
+  function updateResourcesDisplay() {
+    resourcesDisplay.textContent = `Wood: ${resources.wood} | Stone: ${resources.stone} | Food: ${resources.food} | Workers: ${resources.workers} / ${resources.maxWorkers}`;
+  }
+
+  function createTile(index) {
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    tile.dataset.index = index;
+    tile.dataset.type = "empty";
+    tile.dataset.level = "0";
+    tile.addEventListener("click", (e) => {
+      openMenu(e.pageX, e.pageY, tile);
+    });
+    grid.appendChild(tile);
+    tiles.push(tile);
+  }
+
+  function openMenu(x, y, tile) {
+    const type = tile.dataset.type;
+    const level = parseInt(tile.dataset.level);
+
+    let html = `<strong>Tile Options</strong><br>`;
+
+    if (type === "empty") {
+      html += `
+        <button onclick="build('${tile.dataset.index}', 'house')">Build House</button><br>
+        <button onclick="build('${tile.dataset.index}', 'mine')">Build Mine</button><br>
+        <button onclick="build('${tile.dataset.index}', 'lumberjack')">Build Lumberjack</button><br>
+        <button onclick="build('${tile.dataset.index}', 'farm')">Build Farm</button><br>
+      `;
+    } else {
+      html += `
+        <div>Level ${level + 1}</div>
+        <button onclick="upgrade('${tile.dataset.index}')">Upgrade (${upgradeCosts[type]} resources)</button>
+      `;
+    }
+
+    menu.innerHTML = html;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    menu.style.display = "block";
+  }
+
+  function build(index, buildingType) {
+    const tile = tiles[index];
+    tile.classList.add(buildingType);
+    tile.dataset.type = buildingType;
+    tile.dataset.level = "0";
+
+    if (buildingType === "house") {
+      resources.maxWorkers += 3;
+    }
+
+    closeMenu();
+  }
+
+  function upgrade(index) {
+    const tile = tiles[index];
+    const type = tile.dataset.type;
+    let level = parseInt(tile.dataset.level);
+
+    const cost = upgradeCosts[type];
+
+    if (type === "house" && resources.wood >= cost) {
+      resources.wood -= cost;
+      resources.maxWorkers += 2;
+    } else if (type === "mine" && resources.stone >= cost) {
+      resources.stone -= cost;
+    } else if (type === "lumberjack" && resources.wood >= cost) {
+      resources.wood -= cost;
+    } else if (type === "farm" && resources.food >= cost) {
+      resources.food -= cost;
+    } else {
+      alert("Not enough resources!");
+      return;
+    }
+
+    tile.dataset.level = level + 1;
+    upgradeCosts[type] = Math.floor(upgradeCosts[type] * 1.5);
+    closeMenu();
+  }
+
+  function closeMenu() {
+    menu.style.display = "none";
+  }
+
+  document.body.addEventListener("click", (e) => {
+    if (!menu.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  function goHome() {
+    window.location.href = "gameforming.html";
+  }
+
+  for (let i = 0; i < 200; i++) {
+    createTile(i);
+  }
+
+  setInterval(() => {
+    tiles.forEach(tile => {
+      const type = tile.dataset.type;
+      const level = parseInt(tile.dataset.level);
+
+      if (type === "mine" && resources.workers < resources.maxWorkers) {
+        resources.stone += 1 + level;
+        resources.workers++;
+      } else if (type === "lumberjack" && resources.workers < resources.maxWorkers) {
+        resources.wood += 1 + level;
+        resources.workers++;
+      } else if (type === "farm" && resources.workers < resources.maxWorkers) {
+        resources.food += 1 + level;
+        resources.workers++;
+      }
+    });
+
+    resources.workers = 0; // reset workers each tick
+    updateResourcesDisplay();
+  }, 1000); // every second
+
+  updateResourcesDisplay();
+</script>
+
+</body>
+</html>
 
