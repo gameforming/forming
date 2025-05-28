@@ -43,12 +43,12 @@
     .farm { background-color: #ffcc66; }
 
     #menu {
-      position: fixed;
+      position: absolute;
       background: white;
       border: 1px solid black;
       padding: 10px;
       display: none;
-      z-index: 10;
+      z-index: 1000;
     }
 
     button {
@@ -101,7 +101,8 @@
     tile.dataset.index = index;
     tile.dataset.type = "empty";
     tile.dataset.level = "0";
-    tile.addEventListener("click", (e) => {
+    tile.addEventListener("click", function (e) {
+      e.stopPropagation(); // Voorkom dat body-click het menu sluit
       openMenu(e.pageX, e.pageY, tile);
     });
     grid.appendChild(tile);
@@ -112,7 +113,7 @@
     const type = tile.dataset.type;
     const level = parseInt(tile.dataset.level);
 
-    let html = `<strong>Tile Options</strong><br>`;
+    let html = `<strong>Tile Options</strong><br><br>`;
 
     if (type === "empty") {
       html += `
@@ -145,13 +146,13 @@
     }
 
     closeMenu();
+    updateResourcesDisplay();
   }
 
   function upgrade(index) {
     const tile = tiles[index];
     const type = tile.dataset.type;
     let level = parseInt(tile.dataset.level);
-
     const cost = upgradeCosts[type];
 
     if (type === "house" && resources.wood >= cost) {
@@ -171,16 +172,15 @@
     tile.dataset.level = level + 1;
     upgradeCosts[type] = Math.floor(upgradeCosts[type] * 1.5);
     closeMenu();
+    updateResourcesDisplay();
   }
 
   function closeMenu() {
     menu.style.display = "none";
   }
 
-  document.body.addEventListener("click", (e) => {
-    if (!menu.contains(e.target)) {
-      closeMenu();
-    }
+  document.body.addEventListener("click", function () {
+    closeMenu();
   });
 
   function goHome() {
@@ -196,25 +196,26 @@
       const type = tile.dataset.type;
       const level = parseInt(tile.dataset.level);
 
-      if (type === "mine" && resources.workers < resources.maxWorkers) {
-        resources.stone += 1 + level;
-        resources.workers++;
-      } else if (type === "lumberjack" && resources.workers < resources.maxWorkers) {
-        resources.wood += 1 + level;
-        resources.workers++;
-      } else if (type === "farm" && resources.workers < resources.maxWorkers) {
-        resources.food += 1 + level;
-        resources.workers++;
+      if (resources.workers < resources.maxWorkers) {
+        if (type === "mine") {
+          resources.stone += 1 + level;
+          resources.workers++;
+        } else if (type === "lumberjack") {
+          resources.wood += 1 + level;
+          resources.workers++;
+        } else if (type === "farm") {
+          resources.food += 1 + level;
+          resources.workers++;
+        }
       }
     });
 
-    resources.workers = 0; // reset workers each tick
+    resources.workers = 0; // reset workers
     updateResourcesDisplay();
-  }, 1000); // every second
+  }, 1000);
 
   updateResourcesDisplay();
 </script>
 
 </body>
 </html>
-
