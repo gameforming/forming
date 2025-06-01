@@ -1,36 +1,33 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
   <title>Pixel Shooter</title>
-  <link rel="stylesheet" href="shooter.css" />
+  <link rel="stylesheet" href="shooter.css">
 </head>
 <body>
-  <div id="mainMenu">
+  <!-- Hoofdmenu -->
+  <div id="main-menu">
     <h1>Pixel Shooter</h1>
-    <button id="startBattleBtn">Battle starten</button>
-    <button id="selectSkinBtn">Skin kiezen</button>
-    <button id="levelBtn">Level systeem</button>
-    <button id="backHomeBtn">Terug naar home</button>
+    <button id="battle-button">Start Battle</button>
+    <button id="select-skin-button">Select Skin</button>
+    <button id="home-button">Terug naar home</button>
   </div>
 
-  <div id="skinMenu" style="display:none;">
-    <h2>Kies je skin</h2>
-    <button class="skinBtn" data-skin="0">Skin 1</button>
-    <button class="skinBtn" data-skin="1">Skin 2</button>
-    <button class="skinBtn" data-skin="2">Skin 3</button>
-    <button id="closeSkinBtn">Sluit</button>
+  <!-- Skinselectie -->
+  <div id="skin-menu" style="display: none;">
+    <h2>Selecteer je skin</h2>
+    <button class="skin-option">Skin 1</button>
+    <button class="skin-option">Skin 2</button>
+    <button class="skin-option">Skin 3</button>
+    <br><br>
+    <button id="back-to-menu-button">Terug naar menu</button>
   </div>
 
-  <div id="levelMenu" style="display:none;">
-    <h2>Level systeem (Placeholder)</h2>
-    <p>Hier komt je level info</p>
-    <button id="closeLevelBtn">Sluit</button>
-  </div>
+  <!-- Gamecanvas -->
+  <canvas id="game-canvas" width="800" height="480" style="display: none;"></canvas>
 
-  <canvas id="gameCanvas" width="800" height="400" style="display:none;"></canvas>
-
+  <!-- Script -->
   <script src="shooter.js"></script>
 </body>
 </html>
