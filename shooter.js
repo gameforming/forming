@@ -1001,6 +1001,47 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+// === KNOP-ACTIES ===
+document.addEventListener("DOMContentLoaded", () => {
+  const menu = document.getElementById("main-menu");
+  const canvas = document.getElementById("game-canvas");
+  const skinMenu = document.getElementById("skin-menu");
+
+  // Battle-knop
+  document.getElementById("battle-button").addEventListener("click", () => {
+    menu.style.display = "none";
+    canvas.style.display = "block";
+    gameRunning = true;
+    requestAnimationFrame(gameLoop);
+  });
+
+  // Skin selecteren
+  document.getElementById("select-skin-button").addEventListener("click", () => {
+    menu.style.display = "none";
+    skinMenu.style.display = "block";
+  });
+
+  // Terug naar menu vanuit skin-menu
+  document.getElementById("back-to-menu-button").addEventListener("click", () => {
+    skinMenu.style.display = "none";
+    menu.style.display = "block";
+  });
+
+  // Skin kiezen
+  document.querySelectorAll(".skin-option").forEach((btn, index) => {
+    btn.addEventListener("click", () => {
+      currentSkin = index;
+      skinMenu.style.display = "none";
+      menu.style.display = "block";
+    });
+  });
+
+  // Terug naar homepage
+  document.getElementById("home-button").addEventListener("click", () => {
+    window.location.href = "gameforming.html";
+  });
+});
+
 
 
 
