@@ -920,6 +920,34 @@ const gameOverSound = new Audio('gameover.mp3');
 
 // En in je schietfunctie gebruik maken van deze nieuwe shoot functie.
 // En spawnPowerUp() kun je oproepen bijvoorbeeld na elke wave of random tijd.
+function startGame() {
+  // Herstart alles als nodig
+  player.health = 100;
+  player.score = 0;
+  player.x = 100;
+  player.y = 300;
+  enemies.length = 0;
+  bullets.length = 0;
+  lastEnemySpawn = 0;
+  gameOver = false;
+  requestAnimationFrame(gameLoop);
+}
+
+function setPlayerSkin(index) {
+  player.skin = index;
+  // Laad andere sprites op basis van gekozen skin
+  if (index === 0) {
+    player.leftImage = player1Left;
+    player.rightImage = player1Right;
+  } else if (index === 1) {
+    player.leftImage = player2Left;
+    player.rightImage = player2Right;
+  } else if (index === 2) {
+    player.leftImage = player3Left;
+    player.rightImage = player3Right;
+  }
+}
+
 
 
 
