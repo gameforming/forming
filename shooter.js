@@ -947,6 +947,61 @@ function setPlayerSkin(index) {
     player.rightImage = player3Right;
   }
 }
+window.addEventListener('DOMContentLoaded', () => {
+  const mainMenu = document.getElementById('mainMenu');
+  const skinMenu = document.getElementById('skinMenu');
+  const levelMenu = document.getElementById('levelMenu');
+  const gameCanvas = document.getElementById('gameCanvas');
+
+  const startBattleBtn = document.getElementById('startBattleBtn');
+  const selectSkinBtn = document.getElementById('selectSkinBtn');
+  const levelBtn = document.getElementById('levelBtn');
+  const backHomeBtn = document.getElementById('backHomeBtn');
+  const closeSkinBtn = document.getElementById('closeSkinBtn');
+  const closeLevelBtn = document.getElementById('closeLevelBtn');
+  const skinButtons = document.querySelectorAll('.skinBtn');
+
+  startBattleBtn.addEventListener('click', () => {
+    mainMenu.style.display = 'none';
+    gameCanvas.style.display = 'block';
+    skinMenu.style.display = 'none';
+    levelMenu.style.display = 'none';
+    startGame(); // Zorg dat deze functie bestaat
+  });
+
+  selectSkinBtn.addEventListener('click', () => {
+    mainMenu.style.display = 'none';
+    skinMenu.style.display = 'block';
+  });
+
+  levelBtn.addEventListener('click', () => {
+    mainMenu.style.display = 'none';
+    levelMenu.style.display = 'block';
+  });
+
+  backHomeBtn.addEventListener('click', () => {
+    window.location.href = 'gameforming.html';
+  });
+
+  closeSkinBtn.addEventListener('click', () => {
+    skinMenu.style.display = 'none';
+    mainMenu.style.display = 'block';
+  });
+
+  closeLevelBtn.addEventListener('click', () => {
+    levelMenu.style.display = 'none';
+    mainMenu.style.display = 'block';
+  });
+
+  skinButtons.forEach((btn, index) => {
+    btn.addEventListener('click', () => {
+      setPlayerSkin(index); // Zorg dat deze functie bestaat
+      skinMenu.style.display = 'none';
+      mainMenu.style.display = 'block';
+    });
+  });
+});
+
 
 
 
