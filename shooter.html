@@ -6,22 +6,24 @@
   <link rel="stylesheet" href="shooter.css">
 </head>
 <body>
-  <!-- Hoofdmenu -->
-  <div id="main-menu">
-    <h1>Pixel Shooter</h1>
-    <button id="battle-button">Start Battle</button>
-    <button id="select-skin-button">Select Skin</button>
-    <button id="home-button">Terug naar home</button>
-  </div>
+<div id="main-menu">
+  <h1>SHOOTER</h1>
+  <button id="battle-button">Battle</button>
+  <button id="select-skin-button">Select Skin</button>
+  <button id="home-button">Home</button>
+</div>
 
-  <!-- Skinselectie -->
-  <div id="skin-menu" style="display: none;">
-    <h2>Selecteer je skin</h2>
-    <button class="skin-option">Skin 1</button>
-    <button class="skin-option">Skin 2</button>
-    <button class="skin-option">Skin 3</button>
-    <br><br>
-    <button id="back-to-menu-button">Terug naar menu</button>
+<div id="skin-menu" style="display:none;">
+  <h2>Selecteer je skin</h2>
+  <button class="skin-option" data-skin="0">Skin 1</button>
+  <button class="skin-option" data-skin="1">Skin 2</button>
+  <button class="skin-option" data-skin="2">Skin 3</button>
+  <br><br>
+  <button id="back-to-menu-button">Terug naar menu</button>
+</div>
+
+<canvas id="game-canvas" width="800" height="600" style="display:none;"></canvas>
+
   </div>
 
   <!-- Gamecanvas -->
