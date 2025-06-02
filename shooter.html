@@ -1,35 +1,132 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Pixel Shooter</title>
-  <link rel="stylesheet" href="shooter.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shooter Game</title>
+<link rel="stylesheet" href="shooter.css" />
+<style>
+  /* Basis styling */
+  body {
+    margin: 0;
+    background-color: #222;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+  }
+  button {
+    background-color: #444;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    margin: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+  }
+  button:hover {
+    background-color: #666;
+  }
+  #main-menu, #skin-menu {
+    margin-top: 60px;
+  }
+  #skin-menu {
+    display: none;
+  }
+  #game-canvas {
+    display: none;
+    background-color: #000;
+    margin: 30px auto;
+    border: 3px solid #555;
+    display: block;
+  }
+</style>
 </head>
 <body>
+
+<!-- Hoofdmenu -->
 <div id="main-menu">
-  <h1>SHOOTER</h1>
+  <h1>Shooter Game</h1>
   <button id="battle-button">Battle</button>
   <button id="select-skin-button">Select Skin</button>
   <button id="home-button">Home</button>
 </div>
 
-<div id="skin-menu" style="display:none;">
-  <h2>Selecteer je skin</h2>
+<!-- Skin selectie menu -->
+<div id="skin-menu">
+  <h2>Select Your Skin</h2>
   <button class="skin-option" data-skin="0">Skin 1</button>
   <button class="skin-option" data-skin="1">Skin 2</button>
   <button class="skin-option" data-skin="2">Skin 3</button>
-  <br><br>
-  <button id="back-to-menu-button">Terug naar menu</button>
+  <br />
+  <button id="back-to-menu-button">Back to Menu</button>
 </div>
 
-<canvas id="game-canvas" width="800" height="600" style="display:none;"></canvas>
+<!-- Canvas voor de game -->
+<canvas id="game-canvas" width="800" height="600"></canvas>
 
-  </div>
+<!-- Script voor button functionaliteit -->
+<script>
+  // Elementen
+  const mainMenu = document.getElementById('main-menu');
+  const skinMenu = document.getElementById('skin-menu');
+  const gameCanvas = document.getElementById('game-canvas');
 
-  <!-- Gamecanvas -->
-  <canvas id="game-canvas" width="800" height="480" style="display: none;"></canvas>
+  const battleButton = document.getElementById('battle-button');
+  const selectSkinButton = document.getElementById('select-skin-button');
+  const homeButton = document.getElementById('home-button');
+  const backToMenuButton = document.getElementById('back-to-menu-button');
+  const skinOptions = document.querySelectorAll('.skin-option');
 
-  <!-- Script -->
-  <script src="shooter.js"></script>
+  // Functie om huidig scherm te tonen
+  function showScreen(screen) {
+    mainMenu.style.display = 'none';
+    skinMenu.style.display = 'none';
+    gameCanvas.style.display = 'none';
+
+    screen.style.display = 'block';
+  }
+
+  // Knop acties
+  battleButton.addEventListener('click', () => {
+    showScreen(gameCanvas);
+    // Start hier je game logic, bijvoorbeeld:
+    if (typeof startGame === 'function') {
+      startGame();  // functie uit shooter.js
+    }
+  });
+
+  selectSkinButton.addEventListener('click', () => {
+    showScreen(skinMenu);
+  });
+
+  backToMenuButton.addEventListener('click', () => {
+    showScreen(mainMenu);
+  });
+
+  homeButton.addEventListener('click', () => {
+    // Ga terug naar homepage (ander html bestand)
+    window.location.href = 'gameforming.html';
+  });
+
+  // Skin selecties
+  skinOptions.forEach(button => {
+    button.addEventListener('click', () => {
+      const selectedSkin = parseInt(button.getAttribute('data-skin'), 10);
+      // Stel hier je functie in om skin te wisselen:
+      if (typeof changeSkin === 'function') {
+        changeSkin(selectedSkin);
+      }
+      alert('Skin ' + (selectedSkin + 1) + ' geselecteerd!');
+    });
+  });
+
+  // Zet initial scherm
+  showScreen(mainMenu);
+</script>
+
+<script src="shooter.js"></script>
+
 </body>
 </html>
