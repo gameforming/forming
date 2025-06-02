@@ -1041,6 +1041,40 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "gameforming.html";
   });
 });
+document.addEventListener("DOMContentLoaded", () => {
+  const mainMenu = document.getElementById("main-menu");
+  const skinMenu = document.getElementById("skin-menu");
+  const gameCanvas = document.getElementById("game-canvas");
+
+  document.getElementById("battle-button").addEventListener("click", () => {
+    mainMenu.style.display = "none";
+    gameCanvas.style.display = "block";
+    startGame(); // Zorg ervoor dat deze functie bestaat
+  });
+
+  document.getElementById("select-skin-button").addEventListener("click", () => {
+    mainMenu.style.display = "none";
+    skinMenu.style.display = "block";
+  });
+
+  document.getElementById("back-to-menu-button").addEventListener("click", () => {
+    skinMenu.style.display = "none";
+    mainMenu.style.display = "block";
+  });
+
+  document.querySelectorAll(".skin-option").forEach((btn, index) => {
+    btn.addEventListener("click", () => {
+      setPlayerSkin(index); // Zorg ervoor dat deze functie bestaat
+      skinMenu.style.display = "none";
+      mainMenu.style.display = "block";
+    });
+  });
+
+  document.getElementById("home-button").addEventListener("click", () => {
+    window.location.href = "gameforming.html";
+  });
+});
+
 
 
 
