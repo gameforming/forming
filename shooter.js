@@ -1074,6 +1074,46 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "gameforming.html";
   });
 });
+document.addEventListener("DOMContentLoaded", () => {
+  const mainMenu = document.getElementById("main-menu");
+  const skinMenu = document.getElementById("skin-menu");
+  const gameCanvas = document.getElementById("game-canvas");
+
+  // Start het spel
+  document.getElementById("battle-button").addEventListener("click", () => {
+    mainMenu.style.display = "none";
+    gameCanvas.style.display = "block";
+    startGame(); // Zorg dat deze functie bestaat
+  });
+
+  // Skin menu tonen
+  document.getElementById("select-skin-button").addEventListener("click", () => {
+    mainMenu.style.display = "none";
+    skinMenu.style.display = "block";
+  });
+
+  // Terug naar hoofdmenu
+  document.getElementById("back-to-menu-button").addEventListener("click", () => {
+    skinMenu.style.display = "none";
+    mainMenu.style.display = "block";
+  });
+
+  // Skin selecteren
+  document.querySelectorAll(".skin-option").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const skinIndex = parseInt(btn.getAttribute("data-skin"));
+      setPlayerSkin(skinIndex); // Zorg dat deze functie bestaat
+      skinMenu.style.display = "none";
+      mainMenu.style.display = "block";
+    });
+  });
+
+  // Naar home pagina
+  document.getElementById("home-button").addEventListener("click", () => {
+    window.location.href = "gameforming.html";
+  });
+});
+
 
 
 
