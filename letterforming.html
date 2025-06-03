@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Letterforming</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f2f2f2;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    #docName {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    #editor {
+      width: 100%;
+      height: 400px;
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    .buttons {
+      margin-top: 10px;
+    }
+
+    button {
+      padding: 10px 15px;
+      margin-right: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Letterformin</h1>
+
+  <input type="text" id="docName" placeholder="Documentnaam (bijv. mijntekst)">
+  <textarea id="editor" placeholder="Typ hier je tekst..."></textarea>
+
+  <div class="buttons">
+    <button onclick="saveDoc()">Opslaan</button>
+    <button onclick="loadDoc()">Laden</button>
+    <button onclick="deleteDoc()">Verwijder</button>
+    <button onclick="goToMenu()">Back to menu</button>
+  </div>
+
+  <script>
+    function saveDoc() {
+      const name = document.getElementById("docName").value;
+      const content = document.getElementById("editor").value;
+      if (name) {
+        localStorage.setItem("letterform_" + name, content);
+        alert("Document opgeslagen!");
+      } else {
+        alert("Voer eerst een documentnaam in.");
+      }
+    }
+
+    function loadDoc() {
+      const name = document.getElementById("docName").value;
+      if (name) {
+        const content = localStorage.getItem("letterform_" + name);
+        if (content !== null) {
+          document.getElementById("editor").value = content;
+        } else {
+          alert("Geen document gevonden met deze naam.");
+        }
+      } else {
+        alert("Voer eerst een documentnaam in.");
+      }
+    }
+
+    function deleteDoc() {
+      const name = document.getElementById("docName").value;
+      if (name) {
+        localStorage.removeItem("letterform_" + name);
+        document.getElementById("editor").value = "";
+        alert("Document verwijderd.");
+      } else {
+        alert("Voer eerst een documentnaam in.");
+      }
+    }
+
+    function goToMenu() {
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>
