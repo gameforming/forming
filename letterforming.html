@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Letterforming</title>
+  <title>Letterforming</title> <!-- Titel in de browser-tab -->
   <style>
     body {
       font-family: sans-serif;
@@ -32,7 +32,7 @@
       margin-top: 10px;
     }
 
-    button {
+    button, select {
       padding: 10px 15px;
       margin-right: 10px;
       font-size: 14px;
@@ -41,41 +41,64 @@
   </style>
 </head>
 <body>
-  <h1>Letterformin</h1>
+  <h1>Letterforming</h1> <!-- Titel bovenaan de pagina -->
 
-  <input type="text" id="docName" placeholder="Documentnaam (bijv. mijntekst)">
-  <textarea id="editor" placeholder="Typ hier je tekst..."></textarea>
+  <input type="text" id="docName" placeholder="Enter document name">
+  <textarea id="editor" placeholder="Type your text here..."></textarea>
 
   <div class="buttons">
-    <button onclick="saveDoc()">Opslaan</button>
-    <button onclick="loadDoc()">Laden</button>
-    <button onclick="deleteDoc()">Verwijder</button>
+    <button onclick="saveDoc()">Save</button>
+
+    <select id="docList">
+      <option value="">Select a document</option>
+    </select>
+    <button onclick="loadSelected()">Load</button>
+
+    <button onclick="deleteDoc()">Delete</button>
     <button onclick="goToMenu()">Back to menu</button>
   </div>
 
   <script>
+    function updateDropdown() {
+      const dropdown = document.getElementById("docList");
+      dropdown.innerHTML = '<option value="">Select a document</option>';
+
+      for (let key in localStorage) {
+        if (key.startsWith("letterform_")) {
+          const name = key.replace("letterform_", "");
+          const option = document.createElement("option");
+          option.value = name;
+          option.textContent = name;
+          dropdown.appendChild(option);
+        }
+      }
+    }
+
     function saveDoc() {
       const name = document.getElementById("docName").value;
       const content = document.getElementById("editor").value;
       if (name) {
         localStorage.setItem("letterform_" + name, content);
-        alert("Document opgeslagen!");
+        alert("Document saved!");
+        updateDropdown();
       } else {
-        alert("Voer eerst een documentnaam in.");
+        alert("Please enter a document name.");
       }
     }
 
-    function loadDoc() {
-      const name = document.getElementById("docName").value;
+    function loadSelected() {
+      const dropdown = document.getElementById("docList");
+      const name = dropdown.value;
       if (name) {
         const content = localStorage.getItem("letterform_" + name);
         if (content !== null) {
+          document.getElementById("docName").value = name;
           document.getElementById("editor").value = content;
         } else {
-          alert("Geen document gevonden met deze naam.");
+          alert("Document not found.");
         }
       } else {
-        alert("Voer eerst een documentnaam in.");
+        alert("Please select a document.");
       }
     }
 
@@ -84,15 +107,18 @@
       if (name) {
         localStorage.removeItem("letterform_" + name);
         document.getElementById("editor").value = "";
-        alert("Document verwijderd.");
+        alert("Document deleted.");
+        updateDropdown();
       } else {
-        alert("Voer eerst een documentnaam in.");
+        alert("Please enter the name of the document to delete.");
       }
     }
 
     function goToMenu() {
       window.location.href = "index.html";
     }
+
+    updateDropdown();
   </script>
 </body>
 </html>
