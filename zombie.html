@@ -8,47 +8,21 @@
       margin: 0;
       padding: 0;
       height: 100%;
-      background-color: #111;
-      font-family: Arial, sans-serif;
-    }
-
-    .container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      gap: 20px;
+      overflow: hidden;
+      background-color: #000;
     }
 
     iframe {
-      width: 485px;
-      height: 402px;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
       border: none;
-      box-shadow: 0 0 12px rgba(0,0,0,0.5);
-    }
-
-    .back-button {
-      padding: 10px 20px;
-      background-color: #ff4444;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 16px;
-      transition: background-color 0.3s;
-      text-decoration: none;
-    }
-
-    .back-button:hover {
-      background-color: #cc0000;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <iframe src="https://scratch.mit.edu/projects/1187420294/embed" allowfullscreen></iframe>
-    <a class="back-button" href="gameforming.html">⬅ back to home Home</a>
-  </div>
+  <iframe src="https://scratch.mit.edu/projects/1187420294/embed" allowfullscreen></iframe>
 </body>
 </html>
