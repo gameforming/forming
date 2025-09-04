@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Village</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #1e293b;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background: #0f172a;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    header button:hover {
+      background: #2563eb;
+    }
+
+    #resources {
+      display: flex;
+      gap: 20px;
+      font-size: 18px;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+    }
+
+    #grid {
+      flex: 3;
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      grid-template-rows: repeat(16, 1fr);
+      gap: 2px;
+      padding: 10px;
+      background: #0f172a;
+    }
+
+    .cell {
+      background: #334155;
+      border: 1px solid #475569;
+      cursor: pointer;
+    }
+
+    .cell:hover {
+      background: #475569;
+    }
+
+    #sidebar {
+      flex: 1;
+      background: #0f172a;
+      padding: 15px;
+      border-left: 2px solid #475569;
+    }
+
+    #sidebar h2 {
+      margin-top: 0;
+    }
+
+    #sidebar button {
+      padding: 10px 14px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    #sidebar button:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <button onclick="window.location.href='villa.html'">Back to home</button>
+    <div id="resources">
+      <span id="wood">Wood: 0</span>
+      <span id="stone">Stone: 0</span>
+      <span id="metal">Metal: 0</span>
+      <span id="money">Money: 0</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="grid"></div>
+
+    <div id="sidebar">
+      <h2>Building Info</h2>
+      <div id="buildingDetails">Select a cell to see details</div>
+    </div>
+  </main>
+
+  <script>
+    let currentSave = "save_village1";
+    let saveData = {
+      wood: 0,
+      stone: 0,
+      metal: 0,
+      money: 0,
+      buildings: [],
+      moneyMaterialMultiplier: 1
+    };
+
+    // Load save
+    function loadSave() {
+      let data = localStorage.getItem(currentSave);
+      if (data) {
+        saveData = JSON.parse(data);
+      } else {
+        localStorage.setItem(currentSave, JSON.stringify(saveData));
+      }
+      updateResources();
+    }
+
+    // Save
+    function saveGame() {
+      localStorage.setItem(currentSave, JSON.stringify(saveData));
+    }
+
+    // Update resources bar
+    function updateResources() {
+      document.getElementById("wood").textContent = "Wood: " + saveData.wood;
+      document.getElementById("stone").textContent = "Stone: " + saveData.stone;
+      document.getElementById("metal").textContent = "Metal: " + saveData.metal;
+      document.getElementById("money").textContent = "Money: " + saveData.money;
+    }
+
+    // Generate 16x16 grid
+    function generateGrid() {
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+      for (let row = 0; row < 16; row++) {
+        for (let col = 0; col < 16; col++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+
+          cell.addEventListener("click", () => {
+            showBuildingInfo(row, col);
+          });
+
+          grid.appendChild(cell);
+        }
+      }
+    }
+
+    // Show building info in sidebar
+    function showBuildingInfo(row, col) {
+      const details = document.getElementById("buildingDetails");
+      const index = saveData.buildings.findIndex(b => b.row === row && b.col === col);
+
+      if (index >= 0) {
+        const b = saveData.buildings[index];
+        details.innerHTML = `
+          <p>Type: ${b.type}</p>
+          <p>Level: ${b.level}</p>
+          <button onclick="upgradeBuilding(${row}, ${col})">Upgrade</button>
+        `;
+      } else {
+        details.innerHTML = `
+          <p>Empty cell (${row}, ${col})</p>
+          <button onclick="placeBuilding(${row}, ${col}, 'House')">Build House</button>
+          <button onclick="placeBuilding(${row}, ${col}, 'Job')">Build Job</button>
+        `;
+      }
+    }
+
+    // Place building
+    function placeBuilding(row, col, type) {
+      saveData.buildings.push({ row, col, type, level: 1 });
+      saveGame();
+      showBuildingInfo(row, col);
+    }
+
+    // Upgrade building
+    function upgradeBuilding(row, col) {
+      const b = saveData.buildings.find(b => b.row === row && b.col === col);
+      if (b) {
+        b.level++;
+        saveGame();
+        showBuildingInfo(row, col);
+      }
+    }
+
+    // Init
+    loadSave();
+    generateGrid();
+  </script>
+</body>
+</html>
