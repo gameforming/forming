@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shop</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #1e293b;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background: #0f172a;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    header button:hover {
+      background: #2563eb;
+    }
+
+    #resources {
+      display: flex;
+      gap: 20px;
+      font-size: 18px;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px;
+    }
+
+    .shop-item {
+      background: #0f172a;
+      padding: 15px;
+      margin: 15px;
+      border-radius: 10px;
+      width: 300px;
+      text-align: center;
+      border: 2px solid #475569;
+    }
+
+    .shop-item button {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .shop-item button:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <button onclick="window.location.href='villa.html'">Back to Villa</button>
+    <div id="resources">
+      <span id="money">Money: 0</span>
+      <span id="multiplier">Multiplier: x1</span>
+    </div>
+  </header>
+
+  <main>
+    <h1>Shop</h1>
+    <div class="shop-item">
+      <h2>Upgrade Multiplier</h2>
+      <p>Each upgrade doubles your material earnings.</p>
+      <p>Current Multiplier: <span id="currentMultiplier">x1</span></p>
+      <p>Cost: <span id="upgradeCost">100</span> money</p>
+      <button onclick="buyMultiplier()">Buy Upgrade</button>
+    </div>
+  </main>
+
+  <script>
+    let currentSave = "save_village1";
+    let saveData = {
+      wood: 0,
+      stone: 0,
+      metal: 0,
+      money: 0,
+      buildings: [],
+      moneyMaterialMultiplier: 1,
+      multiplierCost: 100
+    };
+
+    // Load save
+    function loadSave() {
+      let data = localStorage.getItem(currentSave);
+      if (data) {
+        saveData = JSON.parse(data);
+      } else {
+        localStorage.setItem(currentSave, JSON.stringify(saveData));
+      }
+      updateUI();
+    }
+
+    // Save
+    function saveGame() {
+      localStorage.setItem(currentSave, JSON.stringify(saveData));
+    }
+
+    function updateUI() {
+      document.getElementById("money").textContent = "Money: " + saveData.money;
+      document.getElementById("multiplier").textContent = "Multiplier: x" + saveData.moneyMaterialMultiplier;
+      document.getElementById("currentMultiplier").textContent = "x" + saveData.moneyMaterialMultiplier;
+      document.getElementById("upgradeCost").textContent = saveData.multiplierCost;
+    }
+
+    function buyMultiplier() {
+      if (saveData.money >= saveData.multiplierCost) {
+        saveData.money -= saveData.multiplierCost;
+        saveData.moneyMaterialMultiplier *= 2;
+        saveData.multiplierCost *= 2;
+        saveGame();
+        updateUI();
+        alert("Upgrade successful! Your multiplier is now x" + saveData.moneyMaterialMultiplier);
+      } else {
+        alert("Not enough money!");
+      }
+    }
+
+    loadSave();
+  </script>
+</body>
+</html>
