@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Minigames</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #1e293b;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background: #0f172a;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    header button:hover {
+      background: #2563eb;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button {
+      padding: 14px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 10px;
+      background: #3b82f6;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+
+    #gameArea {
+      margin-top: 20px;
+      padding: 20px;
+      background: #0f172a;
+      border-radius: 10px;
+      min-width: 300px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <button onclick="window.location.href='villa.html'">Back to menu</button>
+    <div>
+      Duration:
+      <select id="durationSelect">
+        <option value="3">3 minutes</option>
+        <option value="5">5 minutes</option>
+        <option value="7">7 minutes</option>
+        <option value="10">10 minutes</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <h1>Choose a Minigame</h1>
+    <button onclick="startClicker()">Clicker Game</button>
+    <button onclick="startMathQuiz()">Math Quiz</button>
+
+    <div id="gameArea"></div>
+  </main>
+
+  <script>
+    let currentSave = "save_village1";
+    let saveData = {
+      wood: 0,
+      stone: 0,
+      metal: 0,
+      money: 0,
+      buildings: [],
+      moneyMaterialMultiplier: 1
+    };
+
+    // Load save
+    function loadSave() {
+      let data = localStorage.getItem(currentSave);
+      if (data) {
+        saveData = JSON.parse(data);
+      } else {
+        localStorage.setItem(currentSave, JSON.stringify(saveData));
+      }
+    }
+
+    // Save
+    function saveGame() {
+      localStorage.setItem(currentSave, JSON.stringify(saveData));
+    }
+
+    function getDurationMs() {
+      let minutes = parseInt(document.getElementById("durationSelect").value);
+      return minutes * 60 * 1000;
+    }
+
+    // ------------------ Clicker Game ------------------
+    function startClicker() {
+      const gameArea = document.getElementById("gameArea");
+      gameArea.innerHTML = `
+        <h2>Clicker Game</h2>
+        <p>Click the button as fast as you can!</p>
+        <button id="clickBtn">Click me!</button>
+        <p>Clicks: <span id="clickCount">0</span></p>
+        <p id="timer"></p>
+      `;
+
+      let count = 0;
+      let duration = getDurationMs();
+      let endTime = Date.now() + duration;
+
+      document.getElementById("clickBtn").onclick = () => {
+        count++;
+        document.getElementById("clickCount").textContent = count;
+      };
+
+      let timer = setInterval(() => {
+        let remaining = Math.max(0, endTime - Date.now());
+        document.getElementById("timer").textContent = "Time left: " + Math.ceil(remaining / 1000) + "s";
+        if (remaining <= 0) {
+          clearInterval(timer);
+          endClicker(count);
+        }
+      }, 200);
+    }
+
+    function endClicker(score) {
+      let earned = score * saveData.moneyMaterialMultiplier;
+      saveData.wood += earned;
+      saveGame();
+      document.getElementById("gameArea").innerHTML = `
+        <h2>Game Over!</h2>
+        <p>You clicked ${score} times.</p>
+        <p>You earned ${earned} wood.</p>
+      `;
+    }
+
+    // ------------------ Math Quiz ------------------
+    function startMathQuiz() {
+      const gameArea = document.getElementById("gameArea");
+      gameArea.innerHTML = `
+        <h2>Math Quiz</h2>
+        <p id="question"></p>
+        <input type="number" id="answer" />
+        <button onclick="submitAnswer()">Submit</button>
+        <p>Score: <span id="quizScore">0</span></p>
+        <p id="timer"></p>
+      `;
+
+      let score = 0;
+      let duration = getDurationMs();
+      let endTime = Date.now() + duration;
+
+      function newQuestion() {
+        let a = Math.floor(Math.random() * 10) + 1;
+        let b = Math.floor(Math.random() * 10) + 1;
+        let op = ["+", "-", "*"][Math.floor(Math.random() * 3)];
+        let qText = `${a} ${op} ${b}`;
+        let answer = eval(qText);
+        document.getElementById("question").textContent = qText;
+        return answer;
+      }
+
+      let correctAnswer = newQuestion();
+
+      window.submitAnswer = function() {
+        let val = parseInt(document.getElementById("answer").value);
+        if (val === correctAnswer) {
+          score++;
+          document.getElementById("quizScore").textContent = score;
+        }
+        document.getElementById("answer").value = "";
+        correctAnswer = newQuestion();
+      };
+
+      let timer = setInterval(() => {
+        let remaining = Math.max(0, endTime - Date.now());
+        document.getElementById("timer").textContent = "Time left: " + Math.ceil(remaining / 1000) + "s";
+        if (remaining <= 0) {
+          clearInterval(timer);
+          endQuiz(score);
+        }
+      }, 200);
+    }
+
+    function endQuiz(score) {
+      let earned = score * saveData.moneyMaterialMultiplier;
+      saveData.stone += earned;
+      saveGame();
+      document.getElementById("gameArea").innerHTML = `
+        <h2>Game Over!</h2>
+        <p>You answered ${score} questions correctly.</p>
+        <p>You earned ${earned} stone.</p>
+      `;
+    }
+
+    loadSave();
+  </script>
+</body>
+</html>
