@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pet Tycoon</title>
+  <style>
+    :root{
+      --bg:#0f1220; --panel:#151a2f; --panel-2:#1c2342; --text:#e8ecff; --muted:#a9b3d2; --accent:#6aa7ff; --accent-2:#7eedb1;
+      --danger:#ff6b6b; --gold:#ffd166; --grid:#2a315a; --grid-2:#22284a;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;}
+    body{margin:0;background:linear-gradient(180deg,var(--bg),#0b0e1a);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;overflow:hidden}
+
+    /* Top bar */
+    .topbar{position:fixed;inset:0 auto auto 0;height:64px;padding:8px 12px;display:flex;gap:12px;align-items:center;background:linear-gradient(180deg,rgba(8,10,20,.85),rgba(8,10,20,.55));backdrop-filter:blur(6px);z-index:30;border-bottom:1px solid #1e2446}
+    .brand{font-weight:800;letter-spacing:.5px}
+    .topbar select,.topbar button{height:40px;border-radius:10px;border:1px solid #28305c;background:var(--panel);color:var(--text);padding:0 10px}
+    .topbar button{cursor:pointer}
+    .stat{margin-left:auto;display:flex;gap:16px;align-items:center}
+    .pill{background:var(--panel-2);padding:6px 10px;border-radius:999px;border:1px solid #2b3569;color:var(--text)}
+
+    /* Right panel (Shop) */
+    .right{position:fixed;top:64px;right:0;bottom:0;width:320px;background:linear-gradient(180deg,rgba(20,25,50,.9),rgba(20,25,50,.7));border-left:1px solid #1f2752;backdrop-filter:blur(6px);padding:14px;display:flex;flex-direction:column;gap:10px;z-index:20}
+    .panel{background:var(--panel);border:1px solid #28305c;border-radius:14px;padding:12px}
+    .panel h3{margin:0 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
+    .shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:12px;border:1px solid #2a3565;background:var(--panel-2);color:var(--text);cursor:pointer;user-select:none}
+    .btn:hover{border-color:#3a4aa0}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .danger{background:#351b24;border-color:#5a2031;color:#ffb3c1}
+    .success{background:#163425;border-color:#22593b;color:#b8f7d4}
+
+    /* Canvas area */
+    #gameWrap{position:fixed;left:0;top:64px;right:320px;bottom:0;display:flex;align-items:center;justify-content:center}
+    canvas{image-rendering:pixelated; background: radial-gradient(1200px 800px at 40% -20%, #2a3569 0%, rgba(0,0,0,0) 70%), radial-gradient(900px 700px at 120% 120%, #1e2548 0%, rgba(0,0,0,0) 70%), #0c1124; border-top:1px solid #1e2446}
+
+    /* Context menu */
+    .ctx{position:fixed;min-width:160px;background:var(--panel);border:1px solid #2a3565;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:6px;z-index:50}
+    .ctx h4{margin:6px 8px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.12em}
+    .ctx button{width:100%;text-align:left;border:none;background:transparent;color:var(--text);padding:10px;border-radius:10px;cursor:pointer}
+    .ctx button:hover{background:rgba(255,255,255,.06)}
+    .hidden{display:none}
+
+    /* Tooltip */
+    .tooltip{position:fixed;padding:6px 8px;font-size:12px;background:#0009;border:1px solid #2a3565;border-radius:8px;pointer-events:none}
+
+    /* Helper chips */
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{font-size:12px;background:var(--panel-2);border:1px solid #293364;border-radius:999px;padding:6px 8px;color:var(--muted)}
+
+    /* Mini help */
+    .help{font-size:12px;color:var(--muted);line-height:1.4}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">🐾 Pet Tycoon</div>
+    <select id="saveSelect" title="Saved games"></select>
+    <button id="newBtn" title="Start a fresh game">New</button>
+    <button id="loadBtn" title="Load selected save">Load</button>
+    <button id="deleteBtn" title="Delete selected save" class="danger">Delete</button>
+    <div class="stat">
+      <div class="pill" id="moneyPill">$0</div>
+      <div class="pill" id="happyPill">Happiness 0.0</div>
+      <div class="pill" id="sizePill">5×5</div>
+    </div>
+  </div>
+
+  <div id="gameWrap">
+    <canvas id="game" width="900" height="600"></canvas>
+  </div>
+
+  <aside class="right">
+    <div class="panel">
+      <h3>Shop</h3>
+      <div class="shop-grid">
+        <button class="btn" data-buy="dog" title="A playful puppy. Generates happiness.">Buy Dog ($50)</button>
+        <button class="btn" data-buy="cat" title="A curious kitten. Generates happiness.">Buy Cat ($50)</button>
+        <button class="btn" data-buy="bed" title="Pets rest here. One bed can be used by only one pet at a time.">Buy Bed ($40)</button>
+        <button class="btn" data-buy="feeder" title="Dispenses food over time. Needed to keep pets alive.">Buy Food Dispenser ($60)</button>
+      </div>
+      <div class="chips" style="margin-top:10px">
+        <div class="chip">Click to place</div>
+        <div class="chip">Esc to cancel</div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Progress</h3>
+      <div class="help">
+        Pets gain happiness when fed and when they have a bed. Money grows from total happiness. Upgrade pets to increase their happiness multiplier. If there are not enough food dispensers, pets will starve and leave.
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Rebirth</h3>
+      <div class="help">Rebirth expands your house and resets items’ levels (keeps pets). Costs $2,000.</div>
+      <button class="btn success" id="rebirthBtn">Rebirth (bigger house)</button>
+    </div>
+  </aside>
+
+  <div id="ctx" class="ctx hidden"></div>
+  <div id="tooltip" class="tooltip hidden"></div>
+
+<script>
+(function(){
+  // ---------- Utility ----------
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const rand=(a,b)=>Math.random()*(b-a)+a;
+  const choice=arr=>arr[(Math.random()*arr.length)|0];
+  const key=code=>keys[code];
+
+  // ---------- Game constants ----------
+  const TILE=64; // pixels per cell
+  const START_SIZE=5;
+  const CAMERA_SPEED=8; // cells/second equivalent in pixels per second
+  const SAVE_NS='pet_tycoon_saves';
+  const AUTO_SAVE_MS=5000;
+
+  const COSTS={dog:50,cat:50,bed:40,feeder:60};
+  const REBIRTH_COST=2000;
+
+  // Item draw colors/icons
+  const COLORS={ floor:'#12162c', wall:'#0e1330', bed:'#ffd166', feeder:'#7eedb1', dog:'#85b6ff', cat:'#ff9fb6', player:'#e8ecff'};
+
+  // ---------- DOM ----------
+  const canvas=document.getElementById('game');
+  const ctx2d=canvas.getContext('2d');
+  const moneyPill=document.getElementById('moneyPill');
+  const happyPill=document.getElementById('happyPill');
+  const sizePill=document.getElementById('sizePill');
+  const saveSelect=document.getElementById('saveSelect');
+  const newBtn=document.getElementById('newBtn');
+  const loadBtn=document.getElementById('loadBtn');
+  const delBtn=document.getElementById('deleteBtn');
+  const shopButtons=[...document.querySelectorAll('[data-buy]')];
+  const rebirthBtn=document.getElementById('rebirthBtn');
+  const ctxMenu=document.getElementById('ctx');
+  const tooltip=document.getElementById('tooltip');
+
+  // ---------- Input ----------
+  const keys={};
+  window.addEventListener('keydown',e=>{keys[e.code]=true; if(e.code==='Escape') placing=null; hideCtx();});
+  window.addEventListener('keyup',e=>{keys[e.code]=false});
+
+  // ---------- Camera & player logic ----------
+  let camera={x:0,y:0}; // in pixels offset
+  const player={x:0,y:0}; // player always rendered center; we track their world position in cells
+
+  // ---------- World / State ----------
+  let state=null; // active save state
+  let lastTime=performance.now();
+  let placing=null; // {type:'dog'|'cat'|'bed'|'feeder'}
+
+  const defaultState=(name)=>({
+    meta:{name, created:Date.now(), version:1},
+    grid:{w:START_SIZE,h:START_SIZE},
+    money:200,
+    totalHappiness:0,
+    pets:[], // {id,type:'dog'|'cat',name,x,y,hunger:1,alive:true,level:0}
+    items:[], // {id,type:'bed'|'feeder',x,y,level:0}
+    player:{x:Math.floor(START_SIZE/2),y:Math.floor(START_SIZE/2)},
+  });
+
+  function uid(){return Math.random().toString(36).slice(2,9)}
+
+  // ---------- Saving ----------
+  function loadSaves(){
+    const map=JSON.parse(localStorage.getItem(SAVE_NS)||'{}');
+    return map; // {id:stateJSON}
+  }
+  function writeSaves(map){localStorage.setItem(SAVE_NS,JSON.stringify(map))}
+  function listSaves(){
+    const map=loadSaves();
+    const entries=Object.entries(map).map(([id,s])=>[id,JSON.parse(s)]).sort((a,b)=>b[1].meta.created-a[1].meta.created);
+    saveSelect.innerHTML=entries.map(([id,s])=>`<option value="${id}">${s.meta.name} — ${new Date(s.meta.created).toLocaleString()}</option>`).join('');
+  }
+  function saveCurrent(){
+    if(!state) return;
+    const map=loadSaves();
+    map[currentSaveId]=JSON.stringify(state);
+    writeSaves(map);
+  }
+
+  let currentSaveId=null;
+
+  function newGame(){
+    const name=prompt('New game name?','My Pets');
+    if(!name) return;
+    state=defaultState(name);
+    currentSaveId=uid();
+    saveCurrent();
+    listSaves();
+    saveSelect.value=currentSaveId;
+    centerOnPlayer();
+  }
+  function loadGame(id){
+    const map=loadSaves();
+    if(!map[id]) return alert('Save not found');
+    state=JSON.parse(map[id]);
+    currentSaveId=id;
+    listSaves();
+    saveSelect.value=id;
+    centerOnPlayer();
+  }
+  function deleteGame(id){
+    const map=loadSaves();
+    if(!map[id]) return;
+    if(confirm('Delete this save permanently?')){
+      delete map[id];
+      writeSaves(map);
+      listSaves();
+      // try to select first remaining
+      const first=saveSelect.options[0]?.value;
+      if(first){ loadGame(first);} else { state=null; currentSaveId=null; }
+    }
+  }
+
+  newBtn.onclick=()=>newGame();
+  loadBtn.onclick=()=>{ if(saveSelect.value) loadGame(saveSelect.value) };
+  delBtn.onclick=()=>{ if(saveSelect.value) deleteGame(saveSelect.value) };
+
+  // Shop
+  shopButtons.forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const type=btn.dataset.buy;
+      placing={type};
+    })
+  })
+
+  rebirthBtn.onclick=()=>{
+    if(!state) return;
+    if(state.money<REBIRTH_COST) return alert('Not enough money for rebirth.');
+    state.money-=REBIRTH_COST;
+    state.grid.w+=2; state.grid.h+=2;
+    // reset item levels, keep items and pets positions (valid inside bounds)
+    state.items.forEach(it=>it.level=0);
+    sizePill.textContent=`${state.grid.w}×${state.grid.h}`;
+    saveCurrent();
+  }
+
+  function centerOnPlayer(){
+    if(!state) return;
+    player.x=state.player.x; player.y=state.player.y;
+    camera.x=player.x*TILE - canvas.width/2 + TILE/2;
+    camera.y=player.y*TILE - canvas.height/2 + TILE/2;
+  }
+
+  // ---------- Placement / Interaction ----------
+  canvas.addEventListener('mousemove', e=>{
+    mouse.x=e.clientX; mouse.y=e.clientY;
+  });
+  const mouse={x:0,y:0}
+
+  canvas.addEventListener('click', e=>{
+    if(!state) return;
+    const world=screenToWorld(e.clientX,e.clientY);
+    const gx=Math.floor(world.x/TILE), gy=Math.floor(world.y/TILE);
+    // If context menu open, clicking elsewhere closes it
+    if(!pointInRect(e.clientX,e.clientY,ctxMenu.getBoundingClientRect())) hideCtx();
+
+    if(placing){
+      if(!blocked(gx,gy)){
+        if(placing.type==='dog' || placing.type==='cat'){
+          if(!spend(COSTS[placing.type])) return;
+          state.pets.push({id:uid(), type:placing.type, name:placing.type==='dog'?'Doggo':'Kitty', x:gx, y:gy, hunger:1, alive:true, level:0, useBed:null, dir:0});
+        }else{ // item
+          if(!spend(COSTS[placing.type])) return;
+          state.items.push({id:uid(), type:placing.type, x:gx, y:gy, level:0});
+        }
+        placing=null; saveCurrent();
+      }
+      return;
+    }
+
+    // Interaction: open context menu for pets/items
+    const pet = state.pets.find(p=>p.alive && p.x===gx && p.y===gy);
+    const item = state.items.find(i=>i.x===gx && i.y===gy);
+    if(pet){
+      showCtx(e.clientX,e.clientY,[
+        ['Rename', ()=>{ const nm=prompt('New name:', pet.name); if(nm){pet.name=nm; saveCurrent();} }],
+        ['Upgrade (+0.1x)', ()=>{ pet.level++; saveCurrent();}],
+        ['Move', ()=> beginMoveEntity(pet,'pet')],
+      ], pet.name+` (${pet.type})`);
+      return;
+    }
+    if(item){
+      showCtx(e.clientX,e.clientY,[
+        ['Upgrade', ()=>{ item.level++; saveCurrent();}],
+        ['Move', ()=> beginMoveEntity(item,'item')],
+      ], item.type);
+      return;
+    }
+  })
+
+  function beginMoveEntity(entity,kind){
+    hideCtx();
+    placing={type:'__move__', payload:{entity,kind,orig:{x:entity.x,y:entity.y}}};
+    const tip=`Click an empty tile to place the ${kind}. Press Esc to cancel.`;
+    showTooltip(tip, mouse.x+12, mouse.y+12);
+  }
+
+  function hideCtx(){ ctxMenu.classList.add('hidden'); }
+  function showCtx(x,y,actions,title='Menu'){
+    ctxMenu.innerHTML=`<h4>${title}</h4>`+actions.map(([label],i)=>`<button data-i="${i}">${label}</button>`).join('');
+    ctxMenu.style.left=x+"px"; ctxMenu.style.top=y+"px"; ctxMenu.classList.remove('hidden');
+    [...ctxMenu.querySelectorAll('button')].forEach((b,i)=>{
+      b.onclick=()=>{ actions[i][1](); hideCtx(); };
+    })
+  }
+  function showTooltip(text,x,y){ tooltip.textContent=text; tooltip.style.left=x+"px"; tooltip.style.top=y+"px"; tooltip.classList.remove('hidden'); clearTimeout(showTooltip._t); showTooltip._t=setTimeout(()=>tooltip.classList.add('hidden'), 4000); }
+  function pointInRect(px,py,rect){return px>=rect.left && px<=rect.right && py>=rect.top && py<=rect.bottom}
+
+  function spend(amount){ if(state.money>=amount){ state.money-=amount; return true } alert('Not enough money'); return false }
+
+  function blocked(x,y){
+    if(x<0||y<0||x>=state.grid.w||y>=state.grid.h) return true;
+    if(state.items.some(i=>i.x===x&&i.y===y)) return true;
+    if(state.pets.some(p=>p.alive&&p.x===x&&p.y===y)) return true;
+    return false;
+  }
+
+  function screenToWorld(sx,sy){
+    const rect=canvas.getBoundingClientRect();
+    const x=sx-rect.left+camera.x;
+    const y=sy-rect.top+camera.y;
+    return {x,y};
+  }
+
+  // ---------- Simulation ----------
+  let autosaveTimer=0;
+  function tick(dt){
+    if(!state) return;
+
+    // Camera movement (WASD / Arrow keys)
+    const sp=CAMERA_SPEED*TILE*dt; // pixels this frame
+    if(key('KeyW')||key('ArrowUp')) camera.y-=sp;
+    if(key('KeyS')||key('ArrowDown')) camera.y+=sp;
+    if(key('KeyA')||key('ArrowLeft')) camera.x-=sp;
+    if(key('KeyD')||key('ArrowRight')) camera.x+=sp;
+
+    // Keep player centered logically
+    const px=state.player.x*TILE, py=state.player.y*TILE;
+    // (player fixed center on screen, so only camera moves)
+
+    // Pets random movement & needs
+    // Feeder capacity: each feeder supports 2 pets safely
+    const feeders=state.items.filter(i=>i.type==='feeder');
+    const capacity=feeders.length*2;
+
+    // Assign beds to at most one pet each (greedy by proximity)
+    const beds=state.items.filter(i=>i.type==='bed');
+    beds.forEach(b=>b._usedBy=null);
+    state.pets.filter(p=>p.alive).forEach(p=>p.useBed=null);
+    const alive=state.pets.filter(p=>p.alive);
+    alive.forEach(p=>{
+      let closest=null, best=1e9;
+      for(const b of beds){
+        if(b._usedBy) continue; // one pet per bed
+        const d=Math.abs(b.x-p.x)+Math.abs(b.y-p.y);
+        if(d<best){best=d; closest=b}
+      }
+      if(closest){ p.useBed=closest.id; closest._usedBy=p.id; }
+    });
+
+    // Hunger logic
+    const starving = Math.max(0, alive.length - capacity);
+    alive.forEach((p,idx)=>{
+      // Pets beyond capacity gradually lose hunger
+      const fed = idx < capacity; // rough assignment order
+      const hungerDelta = fed ? +0.05*dt : -0.08*dt; // recover vs starve
+      p.hunger=clamp(p.hunger+hungerDelta, 0, 1);
+      if(p.hunger<=0){ p.alive=false; }
+
+      // Random walk (avoid collisions)
+      if(Math.random()<0.02){ // 2% chance per frame to pick a new dir
+        p.dir=choice([[1,0],[-1,0],[0,1],[0,-1],[0,0]]);
+      }
+      const nx=p.x+p.dir?.[0]||0, ny=p.y+p.dir?.[1]||0;
+      if(nx>=0&&ny>=0&&nx<state.grid.w&&ny<state.grid.h && !state.items.some(i=>i.x===nx&&i.y===ny) && !state.pets.some(o=>o!==p && o.alive && o.x===nx&&o.y===ny)){
+        p.x=nx; p.y=ny;
+      }
+    });
+
+    // Happiness & money gain
+    let totalH=0;
+    for(const p of state.pets){
+      if(!p.alive) continue;
+      const hasBed = !!beds.find(b=>b.id===p.useBed);
+      const bedBonus = hasBed ? 1 + (beds.find(b=>b.id===p.useBed)?.level||0)*0.1 : 1;
+      const feedBonus = p.hunger>0.5 ? 1 : 0.4; // poorly fed gives less
+      const base = (p.type==='dog'?1.2:1.0);
+      const mult = 1 + p.level*0.1; // 1.0 -> 1.1 -> 1.2 ...
+      const h = base * mult * bedBonus * feedBonus;
+      totalH += h;
+    }
+    state.totalHappiness=totalH;
+    state.money += totalH * 0.5 * dt; // money per second from happiness
+
+    // Handle moving placement (move existing entity)
+    if(placing && placing.type==='__move__'){
+      const world=screenToWorld(mouse.x,mouse.y);
+      const gx=Math.floor(world.x/TILE), gy=Math.floor(world.y/TILE);
+      const en=placing.payload.entity;
+      if(!blocked(gx,gy)){
+        en.x=gx; en.y=gy;
+      }
+    }
+
+    // Autosave
+    autosaveTimer += dt*1000;
+    if(autosaveTimer>AUTO_SAVE_MS){ autosaveTimer=0; saveCurrent(); }
+
+    // UI update
+    moneyPill.textContent = `$${Math.floor(state.money)}`;
+    happyPill.textContent = `Happiness ${totalH.toFixed(1)}`;
+    sizePill.textContent = `${state.grid.w}×${state.grid.h}`;
+  }
+
+  // ---------- Rendering ----------
+  function draw(){
+    if(!state){
+      // Splash screen
+      ctx2d.clearRect(0,0,canvas.width,canvas.height);
+      ctx2d.fillStyle='#e8ecff';
+      ctx2d.font='700 26px Inter, system-ui';
+      ctx2d.fillText('Welcome to Pet Tycoon', 40, 80);
+      ctx2d.font='400 16px Inter, system-ui';
+      ctx2d.fillText('Create a new game or load an existing one from the top bar.', 40, 112);
+      return;
+    }
+    const W=canvas.width, H=canvas.height;
+    ctx2d.clearRect(0,0,W,H);
+
+    // Grid background
+    const w=state.grid.w, h=state.grid.h;
+    const startX=Math.floor(camera.x/TILE);
+    const startY=Math.floor(camera.y/TILE);
+    const endX=Math.ceil((camera.x+W)/TILE);
+    const endY=Math.ceil((camera.y+H)/TILE);
+
+    for(let gy=startY; gy<endX; gy++){
+      for(let gx=startX; gx<endY; gx++){}
+    }
+    // Draw floor tiles visible
+    for(let y=startY; y<endY; y++){
+      for(let x=startX; x<endX; x++){
+        if(x<0||y<0||x>=w||y>=h) continue;
+        const sx=x*TILE - camera.x, sy=y*TILE - camera.y;
+        // checkerboard
+        ctx2d.fillStyle = ((x+y)&1)?'var(--grid)':'var(--grid-2)';
+        ctx2d.fillRect(sx,sy,TILE-1,TILE-1);
+      }
+    }
+
+    // Draw items
+    for(const it of state.items){
+      const sx=it.x*TILE - camera.x, sy=it.y*TILE - camera.y;
+      ctx2d.fillStyle = it.type==='bed'? COLORS.bed : COLORS.feeder;
+      roundRect(ctx2d,sx+6,sy+6,TILE-12,TILE-12,10,true,false);
+      ctx2d.fillStyle='#0c1124';
+      ctx2d.font='bold 14px Inter';
+      ctx2d.fillText(it.type==='bed'?'🛏️':'🍲', sx+TILE/2-10, sy+TILE/2+6);
+      if(it.level>0){
+        drawBadge(sx+TILE-22, sy+6, `Lv${it.level}`);
+      }
+    }
+
+    // Draw pets (above items)
+    for(const p of state.pets){
+      if(!p.alive){
+        // small ghost
+        const sx=p.x*TILE - camera.x, sy=p.y*TILE - camera.y;
+        ctx2d.globalAlpha=.35; roundRect(ctx2d,sx+10,sy+10,TILE-20,TILE-20,12,true,false);
+        ctx2d.globalAlpha=1;
+        continue;
+      }
+      const sx=p.x*TILE - camera.x, sy=p.y*TILE - camera.y;
+      ctx2d.fillStyle = p.type==='dog'? COLORS.dog : COLORS.cat;
+      roundRect(ctx2d,sx+10,sy+10,TILE-20,TILE-20,12,true,false);
+      // face
+      ctx2d.fillStyle='#0c1124';
+      ctx2d.beginPath(); ctx2d.arc(sx+TILE/2-6, sy+TILE/2-4, 3, 0, Math.PI*2); ctx2d.fill();
+      ctx2d.beginPath(); ctx2d.arc(sx+TILE/2+6, sy+TILE/2-4, 3, 0, Math.PI*2); ctx2d.fill();
+      ctx2d.fillRect(sx+TILE/2-6, sy+TILE/2+6, 12, 3);
+      // name + hunger bar
+      drawLabel(sx+TILE/2, sy-6, `${p.name}`);
+      drawBar(sx+10, sy+TILE-8, TILE-20, 5, p.hunger);
+      if(p.level>0) drawBadge(sx+6, sy+6, `+${(p.level/10).toFixed(1)}x`);
+    }
+
+    // Player (always centered visually)
+    const cx=W/2 - TILE/2, cy=H/2 - TILE/2;
+    ctx2d.fillStyle=COLORS.player;
+    roundRect(ctx2d,cx+6,cy+6,TILE-12,TILE-12,12,true,false);
+    ctx2d.fillStyle='#0c1124'; ctx2d.font='bold 14px Inter'; ctx2d.fillText('🙂', cx+TILE/2-10, cy+TILE/2+8);
+
+    // Placement ghost
+    if(placing){
+      const world=screenToWorld(mouse.x,mouse.y);
+      const gx=Math.floor(world.x/TILE), gy=Math.floor(world.y/TILE);
+      const sx=gx*TILE - camera.x, sy=gy*TILE - camera.y;
+      if(gx>=0&&gy>=0&&gx<state.grid.w&&gy<state.grid.h){
+        ctx2d.globalAlpha=0.6;
+        let color='#fff'; let emoji='?';
+        if(placing.type==='dog'){color=COLORS.dog; emoji='🐶'}
+        else if(placing.type==='cat'){color=COLORS.cat; emoji='🐱'}
+        else if(placing.type==='bed'){color=COLORS.bed; emoji='🛏️'}
+        else if(placing.type==='feeder'){color=COLORS.feeder; emoji='🍲'}
+        else if(placing.type==='__move__'){color='#b3e5ff'; emoji='↔️'}
+        ctx2d.fillStyle=color; roundRect(ctx2d,sx+6,sy+6,TILE-12,TILE-12,10,true,false);
+        ctx2d.fillStyle='#0c1124'; ctx2d.font='bold 18px Inter'; ctx2d.fillText(emoji, sx+TILE/2-10, sy+TILE/2+8);
+        ctx2d.globalAlpha=1;
+      }
+    }
+  }
+
+  function roundRect(ctx,x,y,w,h,r,fill,stroke){
+    if (typeof r === 'number') r = {tl:r,tr:r,br:r,bl:r};
+    ctx.beginPath();
+    ctx.moveTo(x+r.tl, y);
+    ctx.lineTo(x+w-r.tr, y);
+    ctx.quadraticCurveTo(x+w, y, x+w, y+r.tr);
+    ctx.lineTo(x+w, y+h-r.br);
+    ctx.quadraticCurveTo(x+w, y+h, x+w-r.br, y+h);
+    ctx.lineTo(x+r.bl, y+h);
+    ctx.quadraticCurveTo(x, y+h, x, y+h-r.bl);
+    ctx.lineTo(x, y+r.tl);
+    ctx.quadraticCurveTo(x, y, x+r.tl, y);
+    ctx.closePath();
+    if(fill) ctx.fill();
+    if(stroke) ctx.stroke();
+  }
+  function drawLabel(cx,cy,text){
+    ctx2d.font='600 12px Inter';
+    ctx2d.textAlign='center';
+    ctx2d.fillStyle='rgba(12,17,36,.7)';
+    roundRect(ctx2d,cx-52,cy-12,104,18,9,true,false);
+    ctx2d.fillStyle='#e8ecff';
+    ctx2d.fillText(text,cx,cy+2);
+    ctx2d.textAlign='left';
+  }
+  function drawBar(x,y,w,h,t){
+    ctx2d.fillStyle='rgba(255,255,255,.12)'; roundRect(ctx2d,x,y,w,h,3,true,false);
+    ctx2d.fillStyle= t>0.5 ? '#7eedb1' : '#ff9f9f'; roundRect(ctx2d,x,y,w*t,h,3,true,false);
+  }
+  function drawBadge(x,y,text){
+    ctx2d.fillStyle='rgba(12,17,36,.7)'; roundRect(ctx2d,x,y,40,18,8,true,false);
+    ctx2d.fillStyle='#e8ecff'; ctx2d.font='700 11px Inter'; ctx2d.fillText(text,x+6,y+13);
+  }
+
+  // ---------- Main loop ----------
+  function loop(ts){
+    const dt = Math.min(0.033, (ts-lastTime)/1000); lastTime=ts;
+    tick(dt); draw(); requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---------- Init ----------
+  function init(){
+    listSaves();
+    const first=saveSelect.options[0]?.value;
+    if(first) loadGame(first);
+  }
+  init();
+
+  // Resize handling
+  function resize(){
+    const wrap=document.getElementById('gameWrap');
+    const rect=wrap.getBoundingClientRect();
+    canvas.width=Math.max(640, rect.width);
+    canvas.height=Math.max(420, rect.height);
+  }
+  window.addEventListener('resize', resize); resize();
+})();
+</script>
+</body>
+</html>
