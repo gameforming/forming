@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    #chatbox {
+      width: 400px;
+      max-width: 90%;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    #messages {
+      min-height: 150px;
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fafafa;
+      overflow-y: auto;
+    }
+
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin: 5px 0;
+    }
+
+    button {
+      background-color: #1e90ff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #0d6efd;
+    }
+
+    .menu-btn {
+      background-color: #444;
+      margin-top: 15px;
+    }
+
+    .menu-btn:hover {
+      background-color: #222;
+    }
+  </style>
+</head>
+<body>
+  <h1>AI Assistant</h1>
+  <div id="chatbox">
+    <div id="messages"></div>
+    <input id="input" type="text" placeholder="Typ je bericht..." />
+    <button onclick="sendMessage()">Verstuur</button>
+    <button class="menu-btn" onclick="window.location.href='/index.html'">⬅️ Terug naar menu</button>
+  </div>
+
+  <script>
+    async function sendMessage() {
+      const input = document.getElementById("input");
+      const messages = document.getElementById("messages");
+      const text = input.value.trim();
+      if (!text) return;
+
+      // Laat het bericht van de gebruiker zien
+      messages.innerHTML += `<p><b>Jij:</b> ${text}</p>`;
+      input.value = "";
+
+      try {
+        // 👇 Hier komt jouw backend API
+        const response = await fetch("https:generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent" {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+
+        const data = await response.json();
+        messages.innerHTML += `<p><b>AI:</b> ${data.reply}</p>`;
+      } catch (err) {
+        messages.innerHTML += `<p style="color:red;"><b>Error:</b> Geen verbinding met AI backend.</p>`;
+      }
+
+      messages.scrollTop = messages.scrollHeight;
+    }
+  </script>
+</body>
+</html>
