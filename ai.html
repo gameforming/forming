@@ -103,18 +103,29 @@
       input.value = "";
 
       try {
-        // Stuur naar Hugging Face
+        // Vraag Hugging Face om antwoord
         const response = await fetch(API_URL, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${API_KEY}`,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ inputs: text })
+          body: JSON.stringify({ 
+            inputs: text,
+            parameters: { max_new_tokens: 50 } 
+          })
         });
 
         const data = await response.json();
-        const aiReply = data[0]?.generated_text || "Geen antwoord ontvangen.";
+        console.log(data); // 👉 log om te zien wat terugkomt
+
+        let aiReply = "Geen antwoord ontvangen.";
+        if (Array.isArray(data) && data[0]?.generated_text) {
+          aiReply = data[0].generated_text;
+        } else if (data.error) {
+          aiReply = "⚠️ API error: " + data.error;
+        }
+
         messages.innerHTML += `<p><b>AI:</b> ${aiReply}</p>`;
       } catch (err) {
         messages.innerHTML += `<p style="color:red;"><b>Error:</b> ${err.message}</p>`;
