@@ -91,7 +91,7 @@
     clickUpgrade.onclick = () => {
       if (ticks >= clickUpgradeCost) {
         ticks -= clickUpgradeCost;
-        ticksPerClick * 2;
+        ticksPerClick =* 2;
         clickUpgradeCost = Math.floor(clickUpgradeCost * 1.5);
         updateDisplay();
       }
