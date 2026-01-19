@@ -59,6 +59,8 @@
 
         <button id="hit-btn">Hit</button>
         <button id="stand-btn">Stand</button>
+        <button id="restart-btn">Opnieuw</button>
+
         <h2 id="result"></h2>
     </div>
 
@@ -69,6 +71,7 @@
         let deck = [];
         let playerHand = [];
         let dealerHand = [];
+        let playerHasStood = false;
 
         const dealerCardsEl = document.getElementById('dealer-cards');
         const playerCardsEl = document.getElementById('player-cards');
@@ -78,6 +81,7 @@
 
         const hitBtn = document.getElementById('hit-btn');
         const standBtn = document.getElementById('stand-btn');
+        const restartBtn = document.getElementById('restart-btn');
 
         function createDeck() {
             deck = [];
@@ -122,7 +126,6 @@
             dealerHand.forEach((card, i) => {
                 let cardEl = document.createElement('div');
                 cardEl.classList.add('card');
-                // verberg dealer's tweede kaart als speler nog speelt
                 cardEl.textContent = i === 1 && !playerHasStood ? '?' : card.value + card.suit;
                 dealerCardsEl.appendChild(cardEl);
             });
@@ -141,16 +144,12 @@
 
         function hit() {
             playerHand.push(deck.pop());
-            const score = calculateScore(playerHand);
             updateUI();
-            if (score > 21) endGame();
+            if (calculateScore(playerHand) > 21) endGame();
         }
-
-        let playerHasStood = false;
 
         function stand() {
             playerHasStood = true;
-            // Dealer speelt automatisch
             while (calculateScore(dealerHand) < 17) {
                 dealerHand.push(deck.pop());
             }
@@ -190,6 +189,7 @@
 
         hitBtn.addEventListener('click', hit);
         standBtn.addEventListener('click', stand);
+        restartBtn.addEventListener('click', startGame);
 
         startGame();
     </script>
