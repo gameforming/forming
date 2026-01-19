@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackjack</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: green;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #game-area {
+            margin-top: 20px;
+        }
+        .cards {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        .card {
+            background: white;
+            color: black;
+            border-radius: 8px;
+            width: 50px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 5px;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        h2 {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Blackjack</h1>
+    <button onclick="location.href='games.html'">Terug naar Home</button>
+
+    <div id="game-area">
+        <h2>Dealer</h2>
+        <div class="cards" id="dealer-cards"></div>
+        <p id="dealer-score">Score: 0</p>
+
+        <h2>Jij</h2>
+        <div class="cards" id="player-cards"></div>
+        <p id="player-score">Score: 0</p>
+
+        <button id="hit-btn">Hit</button>
+        <button id="stand-btn">Stand</button>
+        <h2 id="result"></h2>
+    </div>
+
+    <script>
+        const suits = ['♠','♥','♦','♣'];
+        const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+
+        let deck = [];
+        let playerHand = [];
+        let dealerHand = [];
+
+        const dealerCardsEl = document.getElementById('dealer-cards');
+        const playerCardsEl = document.getElementById('player-cards');
+        const dealerScoreEl = document.getElementById('dealer-score');
+        const playerScoreEl = document.getElementById('player-score');
+        const resultEl = document.getElementById('result');
+
+        const hitBtn = document.getElementById('hit-btn');
+        const standBtn = document.getElementById('stand-btn');
+
+        function createDeck() {
+            deck = [];
+            for (let suit of suits) {
+                for (let value of values) {
+                    deck.push({suit, value});
+                }
+            }
+        }
+
+        function shuffleDeck() {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function getCardValue(card) {
+            if (card.value === 'A') return 11;
+            if (['K','Q','J'].includes(card.value)) return 10;
+            return parseInt(card.value);
+        }
+
+        function calculateScore(hand) {
+            let score = hand.reduce((sum, card) => sum + getCardValue(card), 0);
+            let aces = hand.filter(c => c.value === 'A').length;
+            while (score > 21 && aces > 0) {
+                score -= 10;
+                aces--;
+            }
+            return score;
+        }
+
+        function dealInitial() {
+            playerHand = [deck.pop(), deck.pop()];
+            dealerHand = [deck.pop(), deck.pop()];
+            updateUI();
+        }
+
+        function updateUI() {
+            dealerCardsEl.innerHTML = '';
+            dealerHand.forEach((card, i) => {
+                let cardEl = document.createElement('div');
+                cardEl.classList.add('card');
+                // verberg dealer's tweede kaart als speler nog speelt
+                cardEl.textContent = i === 1 && !playerHasStood ? '?' : card.value + card.suit;
+                dealerCardsEl.appendChild(cardEl);
+            });
+
+            playerCardsEl.innerHTML = '';
+            playerHand.forEach(card => {
+                let cardEl = document.createElement('div');
+                cardEl.classList.add('card');
+                cardEl.textContent = card.value + card.suit;
+                playerCardsEl.appendChild(cardEl);
+            });
+
+            dealerScoreEl.textContent = 'Score: ' + (playerHasStood ? calculateScore(dealerHand) : getCardValue(dealerHand[0]));
+            playerScoreEl.textContent = 'Score: ' + calculateScore(playerHand);
+        }
+
+        function hit() {
+            playerHand.push(deck.pop());
+            const score = calculateScore(playerHand);
+            updateUI();
+            if (score > 21) endGame();
+        }
+
+        let playerHasStood = false;
+
+        function stand() {
+            playerHasStood = true;
+            // Dealer speelt automatisch
+            while (calculateScore(dealerHand) < 17) {
+                dealerHand.push(deck.pop());
+            }
+            endGame();
+        }
+
+        function endGame() {
+            updateUI();
+            const playerScore = calculateScore(playerHand);
+            const dealerScore = calculateScore(dealerHand);
+
+            if (playerScore > 21) {
+                resultEl.textContent = 'Je bent busted! Dealer wint.';
+            } else if (dealerScore > 21) {
+                resultEl.textContent = 'Dealer busted! Jij wint!';
+            } else if (playerScore > dealerScore) {
+                resultEl.textContent = 'Jij wint!';
+            } else if (playerScore < dealerScore) {
+                resultEl.textContent = 'Dealer wint!';
+            } else {
+                resultEl.textContent = 'Gelijkspel!';
+            }
+
+            hitBtn.disabled = true;
+            standBtn.disabled = true;
+        }
+
+        function startGame() {
+            createDeck();
+            shuffleDeck();
+            playerHasStood = false;
+            hitBtn.disabled = false;
+            standBtn.disabled = false;
+            resultEl.textContent = '';
+            dealInitial();
+        }
+
+        hitBtn.addEventListener('click', hit);
+        standBtn.addEventListener('click', stand);
+
+        startGame();
+    </script>
+</body>
+</html>
