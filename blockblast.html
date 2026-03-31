@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>BlockBlast Clone</title>
+<style>
+  body { display: flex; justify-content: center; margin-top: 50px; }
+  canvas { background: #222; border: 2px solid #555; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="400" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const GRID_SIZE = 8;
+const CELL_SIZE = canvas.width / GRID_SIZE;
+const grid = Array(GRID_SIZE * GRID_SIZE).fill(null); // null = leeg
+
+let blocks = []; // blokken die je kan slepen
+let selectedBlock = null;
+let offsetX = 0;
+let offsetY = 0;
+
+// Random blokken maken
+for(let i=0;i<10;i++){
+    let value = Math.floor(Math.random()*9)+1;
+    let x = Math.floor(Math.random()*GRID_SIZE);
+    let y = Math.floor(Math.random()*GRID_SIZE);
+    let index = y*GRID_SIZE + x;
+    if(grid[index] === null){
+        let block = {x: x*CELL_SIZE, y: y*CELL_SIZE, value, gridIndex: index};
+        blocks.push(block);
+        grid[index] = block;
+    }
+}
+
+// Tekenen
+function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Grid lijnen
+    ctx.strokeStyle = '#555';
+    for(let i=0;i<=GRID_SIZE;i++){
+        ctx.beginPath();
+        ctx.moveTo(i*CELL_SIZE,0);
+        ctx.lineTo(i*CELL_SIZE,canvas.height);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0,i*CELL_SIZE);
+        ctx.lineTo(canvas.width,i*CELL_SIZE);
+        ctx.stroke();
+    }
+
+    // Blokken
+    blocks.forEach(b => {
+        ctx.fillStyle = '#ff6600';
+        ctx.fillRect(b.x+2,b.y+2,CELL_SIZE-4,CELL_SIZE-4);
+        ctx.fillStyle = 'white';
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.value, b.x + CELL_SIZE/2, b.y + CELL_SIZE/2);
+    });
+}
+
+// Mouse events
+canvas.addEventListener('mousedown', e=>{
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    for(let b of blocks){
+        if(mx > b.x && mx < b.x + CELL_SIZE && my > b.y && my < b.y + CELL_SIZE){
+            selectedBlock = b;
+            offsetX = mx - b.x;
+            offsetY = my - b.y;
+            // blok tijdelijk uit grid halen
+            if(b.gridIndex !== null){
+                grid[b.gridIndex] = null;
+                b.gridIndex = null;
+            }
+            break;
+        }
+    }
+});
+
+canvas.addEventListener('mousemove', e=>{
+    if(selectedBlock){
+        const rect = canvas.getBoundingClientRect();
+        selectedBlock.x = e.clientX - rect.left - offsetX;
+        selectedBlock.y = e.clientY - rect.top - offsetY;
+        draw();
+    }
+});
+
+canvas.addEventListener('mouseup', e=>{
+    if(selectedBlock){
+        // vind dichtstbijzijnde grid vak
+        let gx = Math.round(selectedBlock.x / CELL_SIZE);
+        let gy = Math.round(selectedBlock.y / CELL_SIZE);
+        if(gx < 0) gx=0; if(gx >= GRID_SIZE) gx=GRID_SIZE-1;
+        if(gy < 0) gy=0; if(gy >= GRID_SIZE) gy=GRID_SIZE-1;
+        let index = gy*GRID_SIZE + gx;
+
+        if(grid[index] === null){
+            // vak vrij, snap naar grid
+            selectedBlock.x = gx * CELL_SIZE;
+            selectedBlock.y = gy * CELL_SIZE;
+            selectedBlock.gridIndex = index;
+            grid[index] = selectedBlock;
+            checkCombos(index);
+        } else {
+            // vak bezet, terug naar originele plek of random plek
+            selectedBlock.x = selectedBlock.gridIndex !== null ? (selectedBlock.gridIndex % GRID_SIZE) * CELL_SIZE : Math.random() * canvas.width;
+            selectedBlock.y = selectedBlock.gridIndex !== null ? Math.floor(selectedBlock.gridIndex / GRID_SIZE) * CELL_SIZE : Math.random() * canvas.height;
+        }
+        selectedBlock = null;
+        draw();
+    }
+});
+
+// Combo check: check horizontaal, verticaal en diagonaal
+function checkCombos(index){
+    const block = grid[index];
+    if(!block) return;
+
+    const dirs = [
+        {dx:1,dy:0},{dx:-1,dy:0},
+        {dx:0,dy:1},{dx:0,dy:-1},
+        {dx:1,dy:1},{dx:-1,dy:-1},{dx:-1,dy:1},{dx:1,dy:-1}
+    ];
+
+    dirs.forEach(d=>{
+        let nx = (index % GRID_SIZE) + d.dx;
+        let ny = Math.floor(index / GRID_SIZE) + d.dy;
+        if(nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE){
+            let ni = ny*GRID_SIZE + nx;
+            let neighbor = grid[ni];
+            if(neighbor && neighbor.value === block.value){
+                // combo: verhoog value van blok en verwijder neighbor
+                block.value += neighbor.value;
+                grid[ni] = null;
+                blocks = blocks.filter(b=>b!==neighbor);
+            }
+        }
+    });
+}
+
+draw();
+</script>
+</body>
+</html>
