@@ -4,12 +4,14 @@
 <meta charset="UTF-8">
 <title>BlockBlast Clone</title>
 <style>
-  body { display: flex; justify-content: center; margin-top: 50px; }
-  canvas { background: #222; border: 2px solid #555; }
+body { display: flex; flex-direction: column; align-items: center; margin-top: 30px; }
+canvas { background: #222; border: 2px solid #555; margin-bottom: 10px; }
+button { padding: 10px 20px; font-size: 16px; margin-bottom:10px; }
 </style>
 </head>
 <body>
 <canvas id="gameCanvas" width="400" height="400"></canvas>
+<button id="homeBtn">Terug naar Home</button>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
@@ -19,21 +21,26 @@ const GRID_SIZE = 8;
 const CELL_SIZE = canvas.width / GRID_SIZE;
 const grid = Array(GRID_SIZE * GRID_SIZE).fill(null); // null = leeg
 
-let blocks = []; // blokken die je kan slepen
+let tray = []; // 3 blokken die je kan plaatsen
 let selectedBlock = null;
-let offsetX = 0;
-let offsetY = 0;
+let offsetX=0, offsetY=0;
+let score = 0;
 
-// Random blokken maken
-for(let i=0;i<10;i++){
-    let value = Math.floor(Math.random()*9)+1;
-    let x = Math.floor(Math.random()*GRID_SIZE);
-    let y = Math.floor(Math.random()*GRID_SIZE);
-    let index = y*GRID_SIZE + x;
-    if(grid[index] === null){
-        let block = {x: x*CELL_SIZE, y: y*CELL_SIZE, value, gridIndex: index};
-        blocks.push(block);
-        grid[index] = block;
+// Blok vormen (alleen voorbeelden)
+const shapes = [
+    [[1]],           // 1x1
+    [[1,1]],         // 2x1
+    [[1,1,1]],       // 3x1
+    [[1,1],[1,1]],   // 2x2
+];
+
+// Maak nieuwe tray
+function newTray(){
+    tray = [];
+    for(let i=0;i<3;i++){
+        let shape = shapes[Math.floor(Math.random()*shapes.length)];
+        let block = {x: i*60+20, y: 350, shape, width: shape[0].length, height: shape.length, gridIndex:null};
+        tray.push(block);
     }
 }
 
@@ -42,7 +49,7 @@ function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
     // Grid lijnen
-    ctx.strokeStyle = '#555';
+    ctx.strokeStyle='#555';
     for(let i=0;i<=GRID_SIZE;i++){
         ctx.beginPath();
         ctx.moveTo(i*CELL_SIZE,0);
@@ -54,16 +61,92 @@ function draw(){
         ctx.stroke();
     }
 
-    // Blokken
-    blocks.forEach(b => {
-        ctx.fillStyle = '#ff6600';
-        ctx.fillRect(b.x+2,b.y+2,CELL_SIZE-4,CELL_SIZE-4);
-        ctx.fillStyle = 'white';
-        ctx.font = '20px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(b.value, b.x + CELL_SIZE/2, b.y + CELL_SIZE/2);
+    // Grid blokken
+    grid.forEach((b,i)=>{
+        if(b){
+            ctx.fillStyle = '#ff6600';
+            for(let r=0;r<b.shape.length;r++){
+                for(let c=0;c<b.shape[r].length;c++){
+                    if(b.shape[r][c]===1){
+                        ctx.fillRect((i%GRID_SIZE+c)*CELL_SIZE, Math.floor(i/GRID_SIZE+r)*CELL_SIZE, CELL_SIZE-2, CELL_SIZE-2);
+                    }
+                }
+            }
+        }
     });
+
+    // Tray blokken
+    tray.forEach(b=>{
+        ctx.fillStyle = '#00ccff';
+        for(let r=0;r<b.shape.length;r++){
+            for(let c=0;c<b.shape[r].length;c++){
+                if(b.shape[r][c]===1){
+                    ctx.fillRect(b.x + c*CELL_SIZE, b.y + r*CELL_SIZE, CELL_SIZE-2, CELL_SIZE-2);
+                }
+            }
+        }
+    });
+
+    // Score
+    ctx.fillStyle='white';
+    ctx.font='16px Arial';
+    ctx.fillText('Score: '+score, 10, 20);
+}
+
+// Check of blok kan geplaatst worden
+function canPlace(block,gx,gy){
+    for(let r=0;r<block.height;r++){
+        for(let c=0;c<block.width;c++){
+            if(block.shape[r][c]===1){
+                let x = gx+c;
+                let y = gy+r;
+                if(x<0||x>=GRID_SIZE||y<0||y>=GRID_SIZE) return false;
+                if(grid[y*GRID_SIZE + x]) return false;
+            }
+        }
+    }
+    return true;
+}
+
+// Plaats blok
+function placeBlock(block,gx,gy){
+    for(let r=0;r<block.height;r++){
+        for(let c=0;c<block.width;c++){
+            if(block.shape[r][c]===1){
+                grid[(gy+r)*GRID_SIZE + (gx+c)] = block;
+            }
+        }
+    }
+}
+
+// Controleer volle rijen/kolommen
+function checkFullLines(){
+    // Rijen
+    for(let y=0;y<GRID_SIZE;y++){
+        let full = true;
+        for(let x=0;x<GRID_SIZE;x++){
+            if(!grid[y*GRID_SIZE + x]) full=false;
+        }
+        if(full){
+            for(let x=0;x<GRID_SIZE;x++){
+                grid[y*GRID_SIZE+x]=null;
+            }
+            score+=GRID_SIZE;
+        }
+    }
+    // Kolommen
+    for(let x=0;x<GRID_SIZE;x++){
+        let full = true;
+        for(let y=0;y<GRID_SIZE;y++){
+            if(!grid[y*GRID_SIZE + x]) full=false;
+        }
+        if(full){
+            for(let y=0;y<GRID_SIZE;y++){
+                grid[y*GRID_SIZE+y*0+x]=null;
+            }
+            score+=GRID_SIZE;
+        }
+    }
 }
 
 // Mouse events
@@ -71,17 +154,12 @@ canvas.addEventListener('mousedown', e=>{
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-
-    for(let b of blocks){
-        if(mx > b.x && mx < b.x + CELL_SIZE && my > b.y && my < b.y + CELL_SIZE){
+    for(let b of tray){
+        if(mx>b.x && mx<b.x + b.width*CELL_SIZE &&
+           my>b.y && my<b.y + b.height*CELL_SIZE){
             selectedBlock = b;
             offsetX = mx - b.x;
             offsetY = my - b.y;
-            // blok tijdelijk uit grid halen
-            if(b.gridIndex !== null){
-                grid[b.gridIndex] = null;
-                b.gridIndex = null;
-            }
             break;
         }
     }
@@ -98,57 +176,32 @@ canvas.addEventListener('mousemove', e=>{
 
 canvas.addEventListener('mouseup', e=>{
     if(selectedBlock){
-        // vind dichtstbijzijnde grid vak
         let gx = Math.round(selectedBlock.x / CELL_SIZE);
         let gy = Math.round(selectedBlock.y / CELL_SIZE);
-        if(gx < 0) gx=0; if(gx >= GRID_SIZE) gx=GRID_SIZE-1;
-        if(gy < 0) gy=0; if(gy >= GRID_SIZE) gy=GRID_SIZE-1;
-        let index = gy*GRID_SIZE + gx;
-
-        if(grid[index] === null){
-            // vak vrij, snap naar grid
-            selectedBlock.x = gx * CELL_SIZE;
-            selectedBlock.y = gy * CELL_SIZE;
-            selectedBlock.gridIndex = index;
-            grid[index] = selectedBlock;
-            checkCombos(index);
+        if(canPlace(selectedBlock,gx,gy)){
+            placeBlock(selectedBlock,gx,gy);
+            checkFullLines();
+            // verwijder geplaatst blok uit tray
+            tray = tray.filter(b=>b!==selectedBlock);
+            // als tray leeg, nieuwe blokken
+            if(tray.length===0) newTray();
         } else {
-            // vak bezet, terug naar originele plek of random plek
-            selectedBlock.x = selectedBlock.gridIndex !== null ? (selectedBlock.gridIndex % GRID_SIZE) * CELL_SIZE : Math.random() * canvas.width;
-            selectedBlock.y = selectedBlock.gridIndex !== null ? Math.floor(selectedBlock.gridIndex / GRID_SIZE) * CELL_SIZE : Math.random() * canvas.height;
+            // terug naar tray
+            selectedBlock.x = 20 + tray.indexOf(selectedBlock)*60;
+            selectedBlock.y = 350;
         }
-        selectedBlock = null;
+        selectedBlock=null;
         draw();
     }
 });
 
-// Combo check: check horizontaal, verticaal en diagonaal
-function checkCombos(index){
-    const block = grid[index];
-    if(!block) return;
+// Home knop
+document.getElementById('homeBtn').addEventListener('click', ()=>{
+    window.location.href='gamforming.html';
+});
 
-    const dirs = [
-        {dx:1,dy:0},{dx:-1,dy:0},
-        {dx:0,dy:1},{dx:0,dy:-1},
-        {dx:1,dy:1},{dx:-1,dy:-1},{dx:-1,dy:1},{dx:1,dy:-1}
-    ];
-
-    dirs.forEach(d=>{
-        let nx = (index % GRID_SIZE) + d.dx;
-        let ny = Math.floor(index / GRID_SIZE) + d.dy;
-        if(nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE){
-            let ni = ny*GRID_SIZE + nx;
-            let neighbor = grid[ni];
-            if(neighbor && neighbor.value === block.value){
-                // combo: verhoog value van blok en verwijder neighbor
-                block.value += neighbor.value;
-                grid[ni] = null;
-                blocks = blocks.filter(b=>b!==neighbor);
-            }
-        }
-    });
-}
-
+// Start spel
+newTray();
 draw();
 </script>
 </body>
